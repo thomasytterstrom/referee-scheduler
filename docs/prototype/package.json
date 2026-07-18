@@ -1,0 +1,13 @@
+{
+  "name": "referee-solver-prototype",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY prototype for wayfinder ticket 04 — validates greedy+SA solver approach",
+  "scripts": {
+    "tui": "bun tui.ts",
+    "bench": "bun bench.ts",
+    "ui": "bun ui-serve.ts",
+    "progress": "bun progress-serve.ts",
+    "print": "bun print-serve.ts"
+  }
+}

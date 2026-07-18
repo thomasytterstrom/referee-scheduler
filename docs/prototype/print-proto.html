@@ -1,0 +1,230 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway print/export mockup for wayfinder ticket 10 (print/export view).
+  Question: what does the PRINTED courtside artifact look like? Browser print only (MVP; fancy PDF
+  out of scope). Three RADICALLY different print layouts of the same solved day, switchable via
+  ?variant=A|B|C and the floating bottom bar (or ← / → keys), each with its own @media print rules.
+    A — Master wall grid   (landscape, 1 page/day: full round×court grid — the sheet on the wall)
+    B — Per-referee slips   (portrait, cut-and-hand-out: each ref's "your duties today")
+    C — Per-court call sheets (portrait, 1 page/court: chronological match + referee list per court)
+  The screen shows the layout + a Print button + the switcher; hit Print (Ctrl/Cmd-P) to see the
+  actual artifact — the switcher and screen chrome vanish under @media print, @page sets orientation.
+  Run: bun run print  ->  http://localhost:5179/?variant=A
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Referee Scheduler — print prototype</title>
+<style id="pagestyle">@page { size: A4 landscape; margin: 12mm; }</style>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg:#eceef1; --paper:#fff; --line:#c8ccd2; --ink:#12181f; --muted:#5b636e;
+    --r0:#e11d48; --r1:#2563eb; --r2:#16a34a; --r3:#d97706; --r4:#7c3aed; --r5:#0891b2; --r6:#be185d; --r7:#4d7c0f;
+  }
+  body { margin:0; font:13px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--bg); padding-bottom:74px; }
+  h1,h2,h3 { margin:0; font-weight:650; }
+  .muted { color:var(--muted); }
+  /* the "paper" — an A4-ish sheet centered on the grey screen; becomes the whole page on print */
+  .sheet { background:var(--paper); margin:22px auto; padding:14mm; box-shadow:0 2px 12px rgba(0,0,0,.14); }
+  .sheet.landscape { width:297mm; min-height:180mm; }
+  .sheet.portrait  { width:210mm; }
+  /* document header — repeats per sheet/page */
+  .dochdr { display:flex; align-items:baseline; justify-content:space-between; border-bottom:2px solid var(--ink); padding-bottom:6px; margin-bottom:12px; }
+  .dochdr .t { font-size:19px; font-weight:700; }
+  .dochdr .d { font-size:15px; font-weight:600; }
+  .dochdr .g { font-size:11px; color:var(--muted); }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; vertical-align:middle; }
+  .gW { font-weight:700; color:#9d174d; } .gM { font-weight:700; color:#1e3a8a; }
+
+  /* ---------- A : master wall grid (landscape) ---------- */
+  .A-grid { border-collapse:collapse; width:100%; }
+  .A-grid th, .A-grid td { border:1px solid var(--line); padding:4px 6px; vertical-align:top; }
+  .A-grid thead th { background:#eef1f5; font-size:12px; text-align:left; }
+  .A-grid td.rh { background:#f4f6f8; font-weight:600; white-space:nowrap; width:74px; }
+  .A-grid td.rh .tm { font-size:11px; color:var(--muted); font-weight:500; }
+  .A-cell .mno { font-size:10px; color:var(--muted); }
+  .A-cell .r { display:flex; gap:5px; align-items:center; margin-top:2px; }
+  .A-cell .r .k { font-size:9px; color:var(--muted); width:9px; }
+  .A-cell .em { color:var(--muted); }
+
+  /* ---------- B : per-referee duty slips (portrait, 2-up) ---------- */
+  .B-slips { display:grid; grid-template-columns:1fr 1fr; gap:10mm; }
+  .slip { border:1.5px solid var(--ink); border-radius:6px; padding:9px 11px; break-inside:avoid; }
+  .slip .sh { display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:6px; }
+  .slip .sh .nm { font-size:16px; font-weight:700; flex:1; }
+  .slip .sh .ct { font-size:11px; color:var(--muted); }
+  .slip table { border-collapse:collapse; width:100%; font-size:12px; }
+  .slip td, .slip th { text-align:left; padding:2px 5px; }
+  .slip thead th { font-size:10px; color:var(--muted); border-bottom:1px solid var(--line); text-transform:uppercase; letter-spacing:.03em; }
+  .slip td.role { font-weight:700; } .slip td.tm { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .slip .free { color:var(--muted); font-style:italic; }
+
+  /* ---------- C : per-court call sheets (portrait, 1 page/court) ---------- */
+  .court { break-before:page; }
+  .court:first-of-type { break-before:auto; }
+  .court h2 { font-size:22px; margin-bottom:2px; }
+  .court .sub { color:var(--muted); margin-bottom:10px; }
+  .C-tbl { border-collapse:collapse; width:100%; }
+  .C-tbl th, .C-tbl td { border:1px solid var(--line); padding:6px 8px; text-align:left; }
+  .C-tbl thead th { background:#eef1f5; font-size:12px; }
+  .C-tbl td.tm { font-variant-numeric:tabular-nums; white-space:nowrap; font-weight:600; }
+
+  /* ---------- screen-only chrome ---------- */
+  .hint { max-width:297mm; margin:0 auto; padding:0 8px; }
+  .hintbar { display:flex; gap:10px; align-items:center; background:#fff7ed; border:1px solid #fed7aa; color:#9a3412;
+             border-radius:9px; padding:9px 13px; margin:18px auto 0; font-size:13px; }
+  .hintbar button { font:inherit; font-weight:600; cursor:pointer; border:1px solid #9a3412; background:#9a3412; color:#fff; border-radius:7px; padding:6px 12px; }
+  #sw { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#111827; color:#fff;
+        border-radius:999px; padding:8px 10px; display:flex; align-items:center; gap:12px; box-shadow:0 6px 24px rgba(0,0,0,.3); z-index:50; }
+  #sw button { background:#374151; color:#fff; border:0; width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; }
+  #sw .lab { font-weight:600; min-width:230px; text-align:center; }
+  #sw .hnt { color:#9ca3af; font-size:11px; }
+
+  /* ================= @media print — the actual artifact ================= */
+  @media print {
+    body { background:#fff; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    #sw, .hintbar { display:none !important; }
+    .sheet { box-shadow:none; margin:0; padding:0; width:auto; min-height:0; }
+    .A-grid thead th, .A-grid td.rh, .C-tbl thead th { background:#eef1f5 !important; }
+    .B-slips { gap:6mm; }
+    .slip { break-inside:avoid; }
+    .court { break-before:page; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="sw"></div>
+
+<script>
+// ---------------- mock data (no solver; a representative solved Day 1) ----------------
+const TOURNEY = "Åhus Beach Open 2026";
+const GENERATED = "Generated 2026-07-17 14:32";  // static so the mockup is deterministic
+const REFS = [
+  {name:"Anna Berg",     c:"var(--r0)"}, {name:"Björn Dahl",  c:"var(--r1)"},
+  {name:"Carmen Ruiz",   c:"var(--r2)"}, {name:"David Holm",  c:"var(--r3)"},
+  {name:"Elin Wass",     c:"var(--r4)"}, {name:"Farid Aziz",  c:"var(--r5)"},
+  {name:"Greta Lund",    c:"var(--r6)"}, {name:"Hassan Omar", c:"var(--r7)"},
+];
+const COURTS = ["Center","Court 2","Court 3","Court 4"];
+const ROUNDS = 10;
+const roundTime = r => `${String(9 + Math.floor(r*3/2)).padStart(2,"0")}:${(r*3/2)%1?"30":"00"}`;
+
+function buildDay(){
+  const cells=[]; let mno=101;
+  for(let r=0;r<ROUNDS;r++){
+    const row=[];
+    for(let c=0;c<COURTS.length;c++){
+      const head=(r*2+c*3)%REFS.length;
+      let asst=(head+3+c)%REFS.length; if(asst===head) asst=(asst+1)%REFS.length;
+      const needA=!((r+c)%5===4);
+      row.push({mno:mno++, court:c, round:r, gender:(r+c)%2?"M":"W", head, asst:needA?asst:null, needA});
+    }
+    cells.push(row);
+  }
+  return cells;
+}
+const DAY = buildDay();
+
+// per-ref duty list for slips: [{round,time,court,role,gender}]
+function refDuties(i){
+  const out=[];
+  DAY.forEach((row)=>row.forEach(m=>{
+    if(m.head===i) out.push({round:m.round,time:roundTime(m.round),court:COURTS[m.court],role:"Head",gender:m.gender});
+    else if(m.asst===i) out.push({round:m.round,time:roundTime(m.round),court:COURTS[m.court],role:"Assist",gender:m.gender});
+  }));
+  return out.sort((a,b)=>a.round-b.round);
+}
+// per-court chronological matches
+function courtMatches(c){ return DAY.map(row=>row[c]).slice().sort((a,b)=>a.round-b.round); }
+
+// ---------------- tiny DOM helper (same as ui-proto) ----------------
+const el=(t,a={},...kids)=>{ const n=document.createElement(t);
+  for(const k in a){ if(k==="class")n.className=a[k]; else if(k==="html")n.innerHTML=a[k]; else if(k.startsWith("on"))n.addEventListener(k.slice(2),a[k]); else n.setAttribute(k,a[k]); }
+  kids.flat().forEach(c=>n.append(c&&c.nodeType?c:document.createTextNode(c))); return n; };
+const dot=i=>el("span",{class:"dot",style:`background:${REFS[i].c}`});
+const gtag=g=>el("span",{class:"g"+g}, g);
+function docHdr(sub){ return el("div",{class:"dochdr"},
+  el("span",{class:"t"},TOURNEY), el("span",{class:"d"},sub), el("span",{class:"g"},GENERATED)); }
+
+// =================================================================== VARIANT A — master wall grid
+function VariantA(){
+  const head=el("tr",{}, el("th",{},"Round"), ...COURTS.map(c=>el("th",{},c)));
+  const rows=DAY.map((row,r)=> el("tr",{},
+    el("td",{class:"rh"}, "R"+(r+1), el("div",{class:"tm"}, roundTime(r))),
+    ...row.map(m=>el("td",{}, el("div",{class:"A-cell"},
+      el("div",{}, el("span",{class:"mno"}, "#"+m.mno+"  "), gtag(m.gender)),
+      el("div",{class:"r"}, el("span",{class:"k"},"H"), dot(m.head), REFS[m.head].name),
+      m.asst!=null ? el("div",{class:"r"}, el("span",{class:"k"},"A"), dot(m.asst), REFS[m.asst].name)
+                   : el("div",{class:"r em"}, el("span",{class:"k"},"A"), "— none —"))))));
+  return el("div",{class:"sheet landscape"}, docHdr("Day 1 — all courts"),
+    el("table",{class:"A-grid"}, el("thead",{},head), el("tbody",{},...rows)));
+}
+
+// =================================================================== VARIANT B — per-referee slips
+function VariantB(){
+  const slips=REFS.map((rf,i)=>{
+    const duties=refDuties(i);
+    const body = duties.length ? el("table",{},
+        el("thead",{}, el("tr",{}, el("th",{},"Time"), el("th",{},"Court"), el("th",{},"Role"), el("th",{},"Match"))),
+        el("tbody",{}, ...duties.map(d=>el("tr",{},
+          el("td",{class:"tm"}, d.time), el("td",{}, d.court),
+          el("td",{class:"role"}, d.role), el("td",{}, gtag(d.gender))))))
+      : el("div",{class:"free"},"No duties today.");
+    return el("div",{class:"slip"},
+      el("div",{class:"sh"}, dot(i), el("span",{class:"nm"}, rf.name),
+        el("span",{class:"ct"}, duties.length+" duties")),
+      body);
+  });
+  return el("div",{class:"sheet portrait"}, docHdr("Day 1 — referee duty slips"),
+    el("div",{class:"B-slips"}, ...slips));
+}
+
+// =================================================================== VARIANT C — per-court call sheets
+function VariantC(){
+  const courts=COURTS.map((name,c)=>{
+    const rows=courtMatches(c).map(m=>el("tr",{},
+      el("td",{class:"tm"}, roundTime(m.round)),
+      el("td",{}, "#"+m.mno), el("td",{}, gtag(m.gender)),
+      el("td",{}, el("span",{}, ""), dot(m.head), " "+REFS[m.head].name),
+      el("td",{}, m.asst!=null ? [dot(m.asst)," "+REFS[m.asst].name] : el("span",{class:"muted"},"—"))));
+    return el("div",{class:"court"},
+      docHdr("Day 1"),
+      el("h2",{}, name), el("div",{class:"sub"}, "Court call sheet · "+rows.length+" matches"),
+      el("table",{class:"C-tbl"},
+        el("thead",{}, el("tr",{}, el("th",{},"Time"), el("th",{},"Match"), el("th",{},"Cls"),
+          el("th",{},"Head referee"), el("th",{},"Assistant"))),
+        el("tbody",{}, ...rows)));
+  });
+  return el("div",{class:"sheet portrait"}, ...courts);
+}
+
+// ---------------- switcher + router + print ----------------
+const VARIANTS={ A:["Master wall grid (landscape)",VariantA,"landscape"],
+                 B:["Per-referee duty slips (portrait)",VariantB,"portrait"],
+                 C:["Per-court call sheets (portrait)",VariantC,"portrait"] };
+const order=["A","B","C"];
+function current(){ const v=new URLSearchParams(location.search).get("variant"); return VARIANTS[v]?v:"A"; }
+function setVariant(v){ const u=new URL(location); u.searchParams.set("variant",v); history.replaceState(null,"",u); render(); }
+function cycle(d){ const v=current(); setVariant(order[(order.indexOf(v)+d+order.length)%order.length]); }
+
+function render(){
+  const v=current(), [label,fn,orient]=VARIANTS[v];
+  document.getElementById("pagestyle").textContent=`@page { size: A4 ${orient}; margin: 12mm; }`;
+  const hint=el("div",{class:"hint"}, el("div",{class:"hintbar"},
+    el("button",{onclick:()=>print()},"🖨 Print this view"),
+    el("span",{}, "Hit Print (or Ctrl/Cmd-P) to see the real artifact — the grey chrome and switcher disappear; @page is "+orient+".")));
+  document.getElementById("root").replaceChildren(hint, fn());
+  document.getElementById("sw").replaceChildren(
+    el("button",{onclick:()=>cycle(-1)},"‹"),
+    el("div",{class:"lab"}, `${v} — ${label}`, el("div",{class:"hnt"},"← / → to switch · mock data · Print to preview")),
+    el("button",{onclick:()=>cycle(1)},"›"));
+}
+addEventListener("keydown",e=>{ const t=e.target.tagName; if(t==="INPUT"||t==="TEXTAREA"||e.target.isContentEditable)return;
+  if(e.key==="ArrowLeft")cycle(-1); if(e.key==="ArrowRight")cycle(1); });
+render();
+</script>
+</body>
+</html>

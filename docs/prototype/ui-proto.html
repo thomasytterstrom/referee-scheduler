@@ -1,0 +1,284 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway UI mockup for wayfinder ticket 05 (UI/UX prototype).
+  Question: what should the scheduler app look like? Three RADICALLY different layouts of the same
+  surfaces (round×court grid, per-ref view, summary, warnings, entry, controls), switchable via
+  ?variant=A|B|C and the floating bottom bar (or ← / → keys). Mock data only, no solver, read-only.
+    A — Spreadsheet-first (grid dominates, Excel mental model, inspector sidebar)
+    B — Dashboard       (everything-at-once multi-panel, fairness front and center)
+    C — Guided wizard   (linear Setup→Import→Generate→Review→Export, focused work area)
+  Run: bun run ui   ->  http://localhost:5178/?variant=A
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Referee Scheduler — UI prototype</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #f4f5f7; --panel: #fff; --line: #dcdfe4; --ink: #1c2430; --muted: #6b7280;
+    --accent: #1466d6; --accentInk:#fff; --warn:#b45309; --warnBg:#fef3c7; --bad:#b91c1c; --good:#15803d;
+    --r0:#e11d48; --r1:#2563eb; --r2:#16a34a; --r3:#d97706; --r4:#7c3aed; --r5:#0891b2; --r6:#be185d; --r7:#4d7c0f;
+  }
+  body { margin:0; font:14px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  h1,h2,h3 { margin:0; font-weight:650; }
+  button { font:inherit; cursor:pointer; border-radius:7px; border:1px solid var(--line); background:#fff; padding:7px 12px; }
+  button.primary { background:var(--accent); color:var(--accentInk); border-color:var(--accent); font-weight:600; }
+  button.ghost { background:transparent; }
+  .pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:2px 9px; font-size:12px; font-weight:600; color:#fff; }
+  .swatch { width:11px; height:11px; border-radius:3px; display:inline-block; }
+  .gbadge { font-size:10px; font-weight:700; padding:1px 5px; border-radius:4px; letter-spacing:.02em; }
+  .g-W { background:#fbe4ef; color:#9d174d; } .g-M { background:#e0edff; color:#1e3a8a; }
+  .muted { color:var(--muted); }
+  .lock { color:var(--accent); font-weight:700; }
+  .warnrow { display:flex; gap:8px; align-items:flex-start; padding:7px 0; border-bottom:1px dashed var(--line); }
+  .dot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex:none; }
+  #root { padding-bottom:70px; }
+
+  /* ---------- Variant A : spreadsheet-first ---------- */
+  .A-wrap { display:grid; grid-template-columns: 1fr 300px; grid-template-rows:auto 1fr; height:100vh; }
+  .A-toolbar { grid-column:1/3; display:flex; align-items:center; gap:14px; padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .A-toolbar .sp { flex:1; }
+  .tabs { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .tabs button { border:0; border-radius:0; padding:6px 14px; background:#fff; }
+  .tabs button.on { background:var(--accent); color:#fff; }
+  .A-main { overflow:auto; padding:14px 16px; }
+  .grid { border-collapse:separate; border-spacing:0; width:100%; }
+  .grid th, .grid td { border:1px solid var(--line); padding:0; }
+  .grid th { position:sticky; top:0; background:#eef1f5; font-size:12px; padding:6px 8px; z-index:1; }
+  .grid td.rh { background:#eef1f5; font-weight:600; text-align:center; font-size:12px; width:52px; }
+  .cell { padding:6px 7px; min-width:150px; }
+  .cell .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+  .cell .mno { font-size:11px; color:var(--muted); }
+  .role { display:flex; align-items:center; gap:6px; margin:2px 0; }
+  .role .k { font-size:10px; color:var(--muted); width:12px; }
+  .cell.pinned { outline:2px solid var(--accent); outline-offset:-2px; }
+  .A-side { border-left:1px solid var(--line); background:var(--panel); overflow:auto; }
+  .A-side .stabs { display:flex; border-bottom:1px solid var(--line); position:sticky; top:0; background:#fff; }
+  .A-side .stabs button { flex:1; border:0; border-radius:0; border-bottom:2px solid transparent; }
+  .A-side .stabs button.on { border-bottom-color:var(--accent); color:var(--accent); font-weight:600; }
+  .A-side .body { padding:12px 14px; }
+  .refrow { display:flex; align-items:center; gap:8px; padding:5px 0; }
+  .refrow .n { flex:1; } .refrow .c { font-variant-numeric:tabular-nums; color:var(--muted); font-size:12px; }
+
+  /* ---------- Variant B : dashboard ---------- */
+  .B-top { display:flex; align-items:center; gap:16px; padding:12px 20px; background:#0f172a; color:#fff; }
+  .B-top h1 { font-size:16px; }
+  .B-top .sp { flex:1; }
+  .B-top button { background:#1e293b; color:#fff; border-color:#334155; }
+  .B-top button.primary { background:var(--accent); border-color:var(--accent); }
+  .seg { display:inline-flex; background:#1e293b; border-radius:8px; padding:3px; }
+  .seg button { background:transparent; border:0; color:#cbd5e1; padding:5px 14px; }
+  .seg button.on { background:#334155; color:#fff; border-radius:6px; }
+  .B-grid { padding:18px 20px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .card h3 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin-bottom:10px; }
+  .card.span2 { grid-column:1/3; }
+  .tl { border-collapse:collapse; width:100%; font-size:12px; }
+  .tl th, .tl td { border:1px solid var(--line); text-align:center; padding:3px 0; width:24px; height:26px; }
+  .tl td.H { color:#fff; font-weight:700; } .tl td.A { color:#fff; }
+  .tl td.rest { background:#f8fafc; color:#cbd5e1; }
+  .tl .name { text-align:left; padding-left:8px; white-space:nowrap; width:auto; }
+  .bar { height:12px; border-radius:3px; }
+  .barrow { display:grid; grid-template-columns:120px 1fr 1fr; gap:8px; align-items:center; margin:6px 0; font-size:12px; }
+  .minigrid { display:grid; gap:6px; grid-template-columns:repeat(4,1fr); }
+  .mg-cell { border:1px solid var(--line); border-radius:8px; padding:6px 8px; font-size:12px; }
+
+  /* ---------- Variant C : guided wizard ---------- */
+  .C-wrap { display:grid; grid-template-columns:230px 1fr; min-height:100vh; }
+  .C-nav { background:#111827; color:#cbd5e1; padding:22px 0; }
+  .C-nav h1 { color:#fff; font-size:15px; padding:0 22px 18px; }
+  .C-step { display:flex; gap:12px; align-items:center; padding:12px 22px; }
+  .C-step .num { width:26px; height:26px; border-radius:50%; background:#1f2937; display:grid; place-items:center; font-size:12px; flex:none; }
+  .C-step.on { background:#1f2937; color:#fff; border-left:3px solid var(--accent); padding-left:19px; }
+  .C-step.done .num { background:var(--good); color:#fff; }
+  .C-step.on .num { background:var(--accent); color:#fff; }
+  .C-main { padding:26px 34px; max-width:900px; }
+  .C-cta { display:flex; gap:12px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:18px; }
+  .C-cta .big { font-size:20px; }
+  .C-list { display:flex; flex-direction:column; gap:10px; }
+  .C-round { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 16px; }
+  .C-round .hd { display:flex; justify-content:space-between; margin-bottom:8px; font-weight:600; }
+  .C-matches { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .C-match { border:1px solid var(--line); border-radius:9px; padding:8px 10px; }
+  .C-drawer { position:fixed; right:20px; bottom:78px; width:340px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.16); padding:14px 16px; }
+  .C-drawer h3 { font-size:13px; margin-bottom:8px; }
+
+  /* ---------- switcher ---------- */
+  #sw { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#111827; color:#fff;
+        border-radius:999px; padding:8px 10px; display:flex; align-items:center; gap:12px; box-shadow:0 6px 24px rgba(0,0,0,.3); z-index:50; }
+  #sw button { background:#374151; color:#fff; border:0; width:34px; height:34px; border-radius:50%; font-size:16px; }
+  #sw .lab { font-weight:600; min-width:200px; text-align:center; }
+  #sw .hint { color:#9ca3af; font-size:11px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="sw"></div>
+
+<script>
+// ---------------- mock data (no solver; representative of a solved day) ----------------
+const REFS = [
+  {name:"Anna",   c:"var(--r0)"}, {name:"Björn", c:"var(--r1)"}, {name:"Carmen", c:"var(--r2)"},
+  {name:"David",  c:"var(--r3)"}, {name:"Elin",  c:"var(--r4)"}, {name:"Farid",  c:"var(--r5)"},
+  {name:"Greta",  c:"var(--r6)"}, {name:"Hassan",c:"var(--r7)"},
+];
+const COURTS = ["Center","Court 2","Court 3","Court 4"];
+const ROUNDS = 10;
+
+// deterministic pseudo-assignment so the mock looks like a real balanced schedule
+function buildDay(dayOffset){
+  const cells = []; // [round][court] = {mno,gender,head,asst,needA,pinned}
+  let mno = 100*(dayOffset+1);
+  for(let r=0;r<ROUNDS;r++){
+    const row=[];
+    for(let c=0;c<COURTS.length;c++){
+      const head = (r*2 + c*3 + dayOffset) % REFS.length;
+      let asst = (head + 3 + c) % REFS.length; if(asst===head) asst=(asst+1)%REFS.length;
+      const needA = !((r+c)%5===4);
+      row.push({ mno:++mno, gender:(r+c)%2?"M":"W", head, asst:needA?asst:null, needA,
+                 pinned:(r===0&&c===0)||(r===4&&c===2) });
+    }
+    cells.push(row);
+  }
+  return cells;
+}
+const DAYS = [buildDay(0), buildDay(1)];
+let day = 0;
+
+// derived per-ref duty for the current day
+function refStats(cells){
+  const st = REFS.map(()=>({H:0,A:0,W:0,M:0, slots:Array(ROUNDS).fill(null)}));
+  cells.forEach((row,r)=>row.forEach(m=>{
+    st[m.head].H++; st[m.head][m.gender]++; st[m.head].slots[r]="H";
+    if(m.asst!=null){ st[m.asst].A++; st[m.asst].slots[r]="A"; }
+  }));
+  return st;
+}
+const WARN = [
+  {sev:"warn", txt:"Anna — 3 consecutive active duties (rounds 6–8); rest rule bent, short-staffed."},
+  {sev:"warn", txt:"Assistant balance: Hassan 1 vs target 2.4 (under-used)."},
+  {sev:"bad",  txt:"Court 3, round 4 — no assistant assigned (match needs one)."},
+];
+
+// ---------------- shared bits ----------------
+const el = (t,a={},...kids)=>{ const n=document.createElement(t);
+  for(const k in a){ if(k==="class")n.className=a[k]; else if(k==="html")n.innerHTML=a[k]; else if(k.startsWith("on"))n.addEventListener(k.slice(2),a[k]); else n.setAttribute(k,a[k]); }
+  kids.flat().forEach(c=>n.append(c.nodeType?c:document.createTextNode(c))); return n; };
+const chip = i => el("span",{class:"pill",style:`background:${REFS[i].c}`}, REFS[i].name);
+const gb = g => el("span",{class:"gbadge g-"+g}, g);
+
+function controls(cls){ return [
+  el("button",{class:"primary"+(cls||"")},"⚙ Generate"),
+  el("button",{class:cls||""},"⟳ Reshuffle"),
+  el("button",{class:cls||""},"⇪ Import TSV"),
+]; }
+function dayTabs(kind){
+  const mk = (i,label)=>el("button",{class:(day===i?"on":""),onclick:()=>{day=i;render();}},label);
+  if(kind==="seg") return el("div",{class:"seg"}, mk(0,"Day 1"), mk(1,"Day 2"));
+  return el("div",{class:"tabs"}, mk(0,"Day 1"), mk(1,"Day 2"));
+}
+
+// =================================================================== VARIANT A
+function VariantA(){
+  const cells = DAYS[day]; const st = refStats(cells);
+  let tab = VariantA._tab || (VariantA._tab="refs");
+  const gridCell = (m)=> el("div",{class:"cell"+(m.pinned?" pinned":"")},
+      el("div",{class:"top"}, gb(m.gender), el("span",{class:"mno"}, (m.pinned?"🔒 ":"")+"#"+m.mno)),
+      el("div",{class:"role"}, el("span",{class:"k"},"H"), chip(m.head)),
+      m.asst!=null ? el("div",{class:"role"}, el("span",{class:"k"},"A"), chip(m.asst))
+                   : el("div",{class:"role muted"}, el("span",{class:"k"},"A"), "—"));
+  const head = el("tr",{}, el("th",{},"Round"), ...COURTS.map(c=>el("th",{},c)));
+  const rows = cells.map((row,r)=> el("tr",{}, el("td",{class:"rh"},"R"+(r+1)), ...row.map(m=>el("td",{}, gridCell(m)))));
+  const table = el("table",{class:"grid"}, el("thead",{},head), el("tbody",{},...rows));
+
+  const stTabBtn=(k,l)=>el("button",{class:tab===k?"on":"",onclick:()=>{VariantA._tab=k;render();}},l);
+  let sideBody;
+  if(tab==="refs") sideBody = el("div",{class:"body"}, ...REFS.map((rf,i)=>
+      el("div",{class:"refrow"}, el("span",{class:"swatch",style:`background:${rf.c}`}),
+        el("span",{class:"n"}, rf.name), el("span",{class:"c"}, `H${st[i].H} · A${st[i].A}`))));
+  else if(tab==="sum") sideBody = el("div",{class:"body"},
+      el("p",{class:"muted"},"Per-ref gender split (H/A duties)"),
+      ...REFS.map((rf,i)=>el("div",{class:"refrow"}, el("span",{class:"n"},rf.name),
+        el("span",{class:"c"}, `W${st[i].W} · M${st[i].M}`))));
+  else sideBody = el("div",{class:"body"}, ...WARN.map(w=>el("div",{class:"warnrow"},
+        el("span",{class:"dot",style:`background:${w.sev==="bad"?"var(--bad)":"var(--warn)"}`}), el("span",{},w.txt))));
+
+  return el("div",{class:"A-wrap"},
+    el("div",{class:"A-toolbar"}, el("h1",{},"Referee Scheduler"), dayTabs(), el("span",{class:"sp"}), ...controls(), el("button",{class:"ghost"},"⚙ Setup")),
+    el("div",{class:"A-main"}, table, el("p",{class:"muted",style:"margin-top:10px"},"Click a cell to pin/override. 🔒 = pinned (locked, solver works around it).")),
+    el("div",{class:"A-side"}, el("div",{class:"stabs"}, stTabBtn("refs","Referees"), stTabBtn("sum","Summary"), stTabBtn("warn","Warnings ("+WARN.length+")")), sideBody));
+}
+
+// =================================================================== VARIANT B
+function VariantB(){
+  const cells = DAYS[day]; const st = refStats(cells);
+  // schedule grid (compact)
+  const gcell = m => el("td",{style:"padding:4px"}, el("div",{style:"display:flex;gap:4px;align-items:center;justify-content:center"},
+      gb(m.gender), chip(m.head), m.asst!=null?chip(m.asst):el("span",{class:"muted"},"—")));
+  const gridCard = el("div",{class:"card span2"}, el("h3",{},"Schedule — round × court"),
+    el("table",{class:"tl"}, el("thead",{}, el("tr",{}, el("th",{class:"name"},""), ...COURTS.map(c=>el("th",{style:"width:auto"},c)))),
+      el("tbody",{}, ...cells.map((row,r)=>el("tr",{}, el("td",{class:"name"},"R"+(r+1)), ...row.map(m=>gcell(m)))))));
+  // per-ref timeline
+  const tl = el("table",{class:"tl"}, el("thead",{}, el("tr",{}, el("th",{class:"name"},"Referee"), ...Array.from({length:ROUNDS},(_,r)=>el("th",{},r+1)))),
+    el("tbody",{}, ...REFS.map((rf,i)=> el("tr",{}, el("td",{class:"name"}, el("span",{class:"swatch",style:`background:${rf.c};margin-right:6px`}), rf.name),
+        ...st[i].slots.map(s=> s? el("td",{class:s,style:`background:${rf.c}`}, s) : el("td",{class:"rest"},"·"))))));
+  const tlCard = el("div",{class:"card span2"}, el("h3",{},"Per-referee timeline — H / A / · rest"), tl);
+  // fairness bars
+  const maxD = Math.max(...st.map(s=>s.H+s.A));
+  const fair = el("div",{class:"card"}, el("h3",{},"Fairness — Head vs Assistant load"),
+    ...REFS.map((rf,i)=>el("div",{class:"barrow"}, el("span",{}, rf.name),
+      el("div",{class:"bar",style:`width:${st[i].H/maxD*100}%;background:${rf.c}`,title:"Head "+st[i].H}),
+      el("div",{class:"bar",style:`width:${st[i].A/maxD*100}%;background:${rf.c};opacity:.45`,title:"Asst "+st[i].A}))));
+  // warnings
+  const warnCard = el("div",{class:"card"}, el("h3",{},"Warnings ("+WARN.length+")"),
+    ...WARN.map(w=>el("div",{class:"warnrow"}, el("span",{class:"dot",style:`background:${w.sev==="bad"?"var(--bad)":"var(--warn)"}`}), el("span",{},w.txt))));
+
+  return el("div",{},
+    el("div",{class:"B-top"}, el("h1",{},"Referee Scheduler"), el("span",{class:"sp"}), dayTabs("seg"), el("span",{class:"sp"}), ...controls()),
+    el("div",{class:"B-grid"}, gridCard, tlCard, fair, warnCard));
+}
+
+// =================================================================== VARIANT C
+function VariantC(){
+  const cells = DAYS[day]; const st = refStats(cells);
+  const steps = [["Setup","done"],["Import","done"],["Generate","done"],["Review","on"],["Export",""]];
+  const nav = el("div",{class:"C-nav"}, el("h1",{},"Referee Scheduler"),
+    ...steps.map((s,i)=>el("div",{class:"C-step "+s[1]}, el("span",{class:"num"}, s[1]==="done"?"✓":(i+1)), el("span",{},s[0]))));
+  const cta = el("div",{class:"C-cta"}, el("span",{class:"big"},"✓"),
+    el("div",{style:"flex:1"}, el("div",{style:"font-weight:600"},"Day "+(day+1)+" schedule generated"), el("span",{class:"muted"},"Score good · 3 soft warnings · review below, then Export")),
+    el("button",{class:"primary"},"⚙ Regenerate"), el("button",{},"⟳ Reshuffle"), dayTabs());
+  const rounds = cells.map((row,r)=> el("div",{class:"C-round"},
+    el("div",{class:"hd"}, el("span",{},"Round "+(r+1)), el("span",{class:"muted"}, (9+r)+":00")),
+    el("div",{class:"C-matches"}, ...row.map((m,c)=>el("div",{class:"C-match"},
+      el("div",{style:"display:flex;justify-content:space-between;margin-bottom:6px"}, el("strong",{},COURTS[c]), gb(m.gender)),
+      el("div",{class:"role"}, el("span",{class:"k"},"H"), chip(m.head)),
+      m.asst!=null?el("div",{class:"role"}, el("span",{class:"k"},"A"), chip(m.asst)):el("div",{class:"role muted"},el("span",{class:"k"},"A"),"—"))))));
+  const drawer = el("div",{class:"C-drawer"}, el("h3",{},"Referees & warnings"),
+    el("div",{style:"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"}, ...REFS.map((rf,i)=>el("span",{class:"pill",style:`background:${rf.c}`}, `${rf.name} ${st[i].H}/${st[i].A}`))),
+    ...WARN.map(w=>el("div",{class:"warnrow"}, el("span",{class:"dot",style:`background:${w.sev==="bad"?"var(--bad)":"var(--warn)"}`}), el("span",{style:"font-size:12px"},w.txt))));
+  return el("div",{class:"C-wrap"}, nav, el("div",{class:"C-main"}, el("h2",{style:"margin-bottom:16px"},"Review — Day "+(day+1)), cta, el("div",{class:"C-list"}, ...rounds)), drawer);
+}
+
+// ---------------- switcher + router ----------------
+const VARIANTS = { A:["Spreadsheet-first",VariantA], B:["Dashboard",VariantB], C:["Guided wizard",VariantC] };
+const order = ["A","B","C"];
+function current(){ const v=new URLSearchParams(location.search).get("variant"); return VARIANTS[v]?v:"A"; }
+function setVariant(v){ const u=new URL(location); u.searchParams.set("variant",v); history.replaceState(null,"",u); render(); }
+function cycle(d){ const v=current(); setVariant(order[(order.indexOf(v)+d+order.length)%order.length]); }
+
+function render(){
+  const v=current();
+  document.getElementById("root").replaceChildren(VARIANTS[v][1]());
+  document.getElementById("sw").replaceChildren(
+    el("button",{onclick:()=>cycle(-1)},"‹"),
+    el("div",{class:"lab"}, `${v} — ${VARIANTS[v][0]}`, el("div",{class:"hint"},"← / → to switch  ·  mock data")),
+    el("button",{onclick:()=>cycle(1)},"›"));
+}
+addEventListener("keydown",e=>{ const t=e.target.tagName; if(t==="INPUT"||t==="TEXTAREA"||e.target.isContentEditable)return;
+  if(e.key==="ArrowLeft")cycle(-1); if(e.key==="ArrowRight")cycle(1); });
+render();
+</script>
+</body>
+</html>

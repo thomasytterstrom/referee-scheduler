@@ -1,0 +1,376 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway UI mockup for wayfinder ticket 07 (solve-progress UI + Web Worker wiring).
+  Question: what should a RUNNING solve feel like inside the wizard shell (ticket 05)? Three
+  RADICALLY different progress affordances, each a coherent stance on all four sub-questions:
+    (1) how progress surfaces  (2) where Generate/Reshuffle/Cancel go while solving
+    (3) what the grid shows mid-solve  (4) failure/edge display.
+  A — Inline solve screen : determinate bar + best/iters ticker in the Generate step; grid hidden till done.
+  B — Blocking modal      : spinner+ticker modal over a dimmed FROZEN Review grid; Cancel keep-best vs discard.
+  C — Non-blocking live grid : slim top strip + inline ticker; grid LIVE-UPDATES; Generate morphs to Cancel.
+  A real Web Worker is faked by SOLVE (setInterval emitting progress/done, cooperative cancel).
+  Scenario selector (floating bar): normal · precheck-fail (hard block before solve) · tight (budget
+  exhausted, rest rule still bent -> warnings). Switch variants: ?variant=A|B|C or ← / → keys. Mock data.
+  Run: bun run progress   ->  http://localhost:5179/?variant=A
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Referee Scheduler — solve-progress prototype</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg:#f4f5f7; --panel:#fff; --line:#dcdfe4; --ink:#1c2430; --muted:#6b7280;
+    --accent:#1466d6; --accentInk:#fff; --warn:#b45309; --warnBg:#fef3c7; --bad:#b91c1c; --good:#15803d;
+    --r0:#e11d48; --r1:#2563eb; --r2:#16a34a; --r3:#d97706; --r4:#7c3aed; --r5:#0891b2; --r6:#be185d; --r7:#4d7c0f;
+  }
+  body { margin:0; font:14px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  h1,h2,h3 { margin:0; font-weight:650; }
+  button { font:inherit; cursor:pointer; border-radius:7px; border:1px solid var(--line); background:#fff; padding:7px 12px; }
+  button.primary { background:var(--accent); color:var(--accentInk); border-color:var(--accent); font-weight:600; }
+  button.danger { background:var(--bad); color:#fff; border-color:var(--bad); font-weight:600; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  button.ghost { background:transparent; }
+  .pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:2px 9px; font-size:12px; font-weight:600; color:#fff; }
+  .swatch { width:11px; height:11px; border-radius:3px; display:inline-block; }
+  .gbadge { font-size:10px; font-weight:700; padding:1px 5px; border-radius:4px; letter-spacing:.02em; }
+  .g-W { background:#fbe4ef; color:#9d174d; } .g-M { background:#e0edff; color:#1e3a8a; }
+  .muted { color:var(--muted); }
+  .mono { font-variant-numeric:tabular-nums; }
+  .warnrow { display:flex; gap:8px; align-items:flex-start; padding:7px 0; border-bottom:1px dashed var(--line); }
+  .dot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex:none; }
+  #root { padding-bottom:74px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .spinner { width:34px; height:34px; border:4px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes indet { 0%{left:-40%} 100%{left:100%} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* ---- shared wizard-C shell (from the winning ui-proto Variant C) ---- */
+  .C-wrap { display:grid; grid-template-columns:230px 1fr; min-height:100vh; }
+  .C-nav { background:#111827; color:#cbd5e1; padding:22px 0; }
+  .C-nav h1 { color:#fff; font-size:15px; padding:0 22px 18px; }
+  .C-step { display:flex; gap:12px; align-items:center; padding:12px 22px; }
+  .C-step .num { width:26px; height:26px; border-radius:50%; background:#1f2937; display:grid; place-items:center; font-size:12px; flex:none; }
+  .C-step.on { background:#1f2937; color:#fff; border-left:3px solid var(--accent); padding-left:19px; }
+  .C-step.done .num { background:var(--good); color:#fff; }
+  .C-step.on .num { background:var(--accent); color:#fff; }
+  .C-main { padding:26px 34px; max-width:960px; position:relative; }
+
+  /* ---- ticker (shared readout of best/iters/elapsed) ---- */
+  .ticker { display:flex; gap:26px; }
+  .ticker .k { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .ticker .v { font-size:24px; font-weight:700; }
+  .ticker .v.sm { font-size:16px; }
+
+  /* ---- grid (compact, from Variant A) ---- */
+  .grid { border-collapse:separate; border-spacing:0; width:100%; }
+  .grid th, .grid td { border:1px solid var(--line); padding:0; }
+  .grid th { background:#eef1f5; font-size:12px; padding:6px 8px; }
+  .grid td.rh { background:#eef1f5; font-weight:600; text-align:center; font-size:12px; width:48px; }
+  .cell { padding:5px 6px; min-width:132px; }
+  .cell .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .cell .mno { font-size:11px; color:var(--muted); }
+  .role { display:flex; align-items:center; gap:6px; margin:2px 0; }
+  .role .k { font-size:10px; color:var(--muted); width:12px; }
+
+  /* Variant A inline panel */
+  .A-panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:26px; }
+  .A-bar { height:12px; background:#eef1f5; border-radius:999px; overflow:hidden; margin:18px 0 10px; }
+  .A-bar > i { display:block; height:100%; background:var(--accent); width:0; transition:width .1s linear; }
+
+  /* Variant B modal */
+  .B-scrim { position:fixed; inset:0; background:rgba(15,23,42,.55); display:grid; place-items:center; z-index:40; }
+  .modal { background:var(--panel); border-radius:14px; padding:24px 26px; width:420px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+  .frozen { filter:grayscale(.4) opacity(.55); pointer-events:none; }
+
+  /* Variant C live strip */
+  .C-strip { height:4px; background:#e5e9f0; position:relative; overflow:hidden; border-radius:999px; margin:0 0 4px; }
+  .C-strip > i { position:absolute; top:0; height:100%; width:40%; background:var(--accent); animation:indet 1.1s ease-in-out infinite; }
+  .C-inlineticker { display:flex; align-items:center; gap:14px; font-size:12px; color:var(--muted); }
+  .flash { animation:flash .4s ease; }
+  @keyframes flash { from { background:#fff7cc; } to { background:transparent; } }
+  .toast { position:fixed; bottom:84px; left:50%; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 16px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:45; }
+
+  .banner { border-radius:10px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start; }
+  .banner.bad { background:#fee2e2; border:1px solid #fca5a5; color:#7f1d1d; }
+  .banner.warn { background:var(--warnBg); border:1px solid #fcd34d; color:#78350f; }
+
+  /* switcher */
+  #sw { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#111827; color:#fff;
+        border-radius:999px; padding:8px 12px; display:flex; align-items:center; gap:14px; box-shadow:0 6px 24px rgba(0,0,0,.3); z-index:60; }
+  #sw button { background:#374151; color:#fff; border:0; width:34px; height:34px; border-radius:50%; font-size:16px; }
+  #sw .lab { font-weight:600; min-width:190px; text-align:center; }
+  #sw .hint { color:#9ca3af; font-size:11px; }
+  #sw select { background:#374151; color:#fff; border:0; border-radius:7px; padding:6px 8px; font:inherit; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="sw"></div>
+
+<script>
+// ---------------- mock data ----------------
+const REFS = [
+  {name:"Anna",c:"var(--r0)"},{name:"Björn",c:"var(--r1)"},{name:"Carmen",c:"var(--r2)"},{name:"David",c:"var(--r3)"},
+  {name:"Elin",c:"var(--r4)"},{name:"Farid",c:"var(--r5)"},{name:"Greta",c:"var(--r6)"},{name:"Hassan",c:"var(--r7)"},
+];
+const COURTS = ["Center","Court 2","Court 3","Court 4"];
+const ROUNDS = 8;
+function buildGrid(seed){
+  const cells=[]; let mno=100;
+  for(let r=0;r<ROUNDS;r++){ const row=[];
+    for(let c=0;c<COURTS.length;c++){
+      const head=(r*2+c*3+seed)%REFS.length; let asst=(head+3+c+seed)%REFS.length; if(asst===head)asst=(asst+1)%REFS.length;
+      const needA=!((r+c)%5===4);
+      row.push({mno:++mno,gender:(r+c)%2?"M":"W",head,asst:needA?asst:null,needA,pinned:(r===0&&c===0)});
+    } cells.push(row);
+  } return cells;
+}
+let GRID = buildGrid(0);           // "previous result" shown before/around a solve
+let seedCounter = 0;
+
+// ---------------- fake Web Worker: SOLVE (setInterval -> progress/done, cooperative cancel) ----------------
+const SOLVE = {
+  timer:null, t0:0, budgetMs:2000, best:0, iters:0, running:false, warm:false,
+  onProg:null, onDone:null, scenario:"normal",
+  start(opts){
+    this.stop();
+    if(this.scenario==="precheck"){ opts.onFail && opts.onFail({round:5,demand:9,avail:8}); return; }
+    Object.assign(this,{running:true,iters:0,warm:!!opts.warmStart,t0:Date.now(),
+      onProg:opts.onProgress,onDone:opts.onDone,budgetMs:opts.budgetMs||2000});
+    this.best = this.warm ? 900 : 4200;
+    this.timer=setInterval(()=>this.tick(),100);
+  },
+  tick(){
+    const dt=Date.now()-this.t0;
+    const floor=this.scenario==="tight"?648:176;      // tight can't reach the good score
+    const start=this.warm?900:4200;
+    const target=floor+(start-floor)*Math.exp(-3.6*Math.min(1,dt/700));
+    this.best=Math.min(this.best,Math.round(target));
+    this.iters+=90000+Math.floor(Math.random()*45000);
+    this.onProg && this.onProg({elapsedMs:dt,bestScore:this.best,iters:this.iters});
+    if(dt>=this.budgetMs) this.finish(false);
+  },
+  cancel(){ if(this.running) this.finish(true); },
+  finish(cancelled){
+    this.stop();
+    const bent=this.scenario==="tight";
+    this.onDone && this.onDone({score:this.best,cancelled,bent,elapsedMs:Date.now()-this.t0,iters:this.iters});
+  },
+  stop(){ if(this.timer)clearInterval(this.timer); this.timer=null; this.running=false; }
+};
+
+// ---------------- helpers ----------------
+const el=(t,a={},...kids)=>{const n=document.createElement(t);
+  for(const k in a){ if(k==="class")n.className=a[k]; else if(k==="html")n.innerHTML=a[k]; else if(k.startsWith("on"))n.addEventListener(k.slice(2),a[k]); else if(a[k]!=null)n.setAttribute(k,a[k]); }
+  kids.flat().forEach(c=>c!=null&&n.append(c.nodeType?c:document.createTextNode(c))); return n;};
+const chip=i=>el("span",{class:"pill",style:`background:${REFS[i].c}`},REFS[i].name);
+const gb=g=>el("span",{class:"gbadge g-"+g},g);
+const fmtIters=n=> n>=1e6?(n/1e6).toFixed(2)+"M":Math.round(n/1e3)+"k";
+const fmtSec=ms=>(ms/1000).toFixed(1)+"s";
+
+function wizardNav(activeIdx){
+  const steps=[["Setup","done"],["Import","done"],["Generate",""],["Review",""],["Export",""]];
+  steps[activeIdx][1]="on"; for(let i=0;i<activeIdx;i++) steps[i][1]="done";
+  return el("div",{class:"C-nav"}, el("h1",{},"Referee Scheduler"),
+    ...steps.map((s,i)=>el("div",{class:"C-step "+s[1]}, el("span",{class:"num"}, s[1]==="done"?"✓":(i+1)), el("span",{},s[0]))));
+}
+function gridTable(cells,opts={}){
+  const gridCell=m=>el("div",{class:"cell"},
+    el("div",{class:"top"}, gb(m.gender), el("span",{class:"mno"},(m.pinned?"🔒 ":"")+"#"+m.mno)),
+    el("div",{class:"role"}, el("span",{class:"k"},"H"), chip(m.head)),
+    m.asst!=null?el("div",{class:"role"}, el("span",{class:"k"},"A"), chip(m.asst)):el("div",{class:"role muted"}, el("span",{class:"k"},"A"),"—"));
+  return el("table",{class:"grid"+(opts.cls?(" "+opts.cls):"")},
+    el("thead",{}, el("tr",{}, el("th",{},"Round"), ...COURTS.map(c=>el("th",{},c)))),
+    el("tbody",{}, ...cells.map((row,r)=>el("tr",{}, el("td",{class:"rh"},"R"+(r+1)), ...row.map(m=>el("td",{}, gridCell(m)))))));
+}
+function ticker(p,small){ const cls="v"+(small?" sm":"");
+  return el("div",{class:"ticker"},
+    el("div",{}, el("div",{class:"k"},"Best score"), el("div",{class:cls+" mono"}, p?p.bestScore:"—")),
+    el("div",{}, el("div",{class:"k"},"Iterations"), el("div",{class:cls+" mono"}, p?fmtIters(p.iters):"—")),
+    el("div",{}, el("div",{class:"k"},"Elapsed"), el("div",{class:cls+" mono"}, p?fmtSec(p.elapsedMs):"—")));
+}
+
+// ========================================================= VARIANT A — inline solve screen
+// Progress is its own screen inside the Generate step. Determinate bar tied to budget + big ticker.
+// Generate/Reshuffle disabled while solving; Cancel (keep best-so-far) inline. Grid not shown until done.
+function VariantA(){
+  const st = VariantA._st || (VariantA._st={phase:"idle",prog:null,result:null,fail:null});
+  const rerender=()=>render();
+  const budgetMs=2000;
+
+  function begin(warm){
+    st.phase="solving"; st.prog=null; st.result=null; st.fail=null;
+    SOLVE.start({budgetMs,warmStart:warm,
+      onProgress:p=>{st.prog=p; paintProgress();},
+      onDone:d=>{st.phase="done"; st.result=d; if(!d.cancelled){seedCounter++; GRID=buildGrid(seedCounter);} rerender();},
+      onFail:f=>{st.phase="failed"; st.fail=f; rerender();}});
+    rerender();
+  }
+  // in-place progress paint (avoid full rerender each 100ms tick)
+  function paintProgress(){
+    const bar=document.getElementById("A-fill"); if(bar)bar.style.width=Math.min(100,st.prog.elapsedMs/budgetMs*100)+"%";
+    const t=document.getElementById("A-ticker"); if(t)t.replaceChildren(ticker(st.prog));
+  }
+
+  let body;
+  if(st.phase==="idle"){
+    body=el("div",{class:"A-panel"},
+      el("h2",{},"Generate Day 1 schedule"),
+      el("p",{class:"muted",style:"margin:6px 0 18px"},"Runs the solver in a Web Worker (~1–2 s budget). You can cancel any time and keep the best schedule found so far."),
+      el("div",{style:"display:flex;gap:12px"},
+        el("button",{class:"primary",style:"font-size:16px;padding:12px 22px",onclick:()=>begin(false)},"⚙ Generate"),
+        el("button",{onclick:()=>begin(true)},"⟳ Reshuffle (new seed)")));
+  } else if(st.phase==="solving"){
+    body=el("div",{class:"A-panel"},
+      el("div",{style:"display:flex;align-items:center;gap:12px"}, el("div",{class:"spinner"}), el("h2",{},"Solving…")),
+      el("div",{class:"A-bar"}, el("i",{id:"A-fill"})),
+      el("div",{id:"A-ticker",style:"margin:14px 0 20px"}, ticker(st.prog)),
+      el("div",{style:"display:flex;gap:12px;align-items:center"},
+        el("button",{class:"danger",onclick:()=>SOLVE.cancel()},"✕ Cancel & keep best so far"),
+        el("button",{disabled:true},"⚙ Generate"), el("button",{disabled:true},"⟳ Reshuffle"),
+        el("span",{class:"muted",style:"margin-left:auto"},"Cancel returns the best schedule found so far — never nothing.")));
+  } else if(st.phase==="failed"){
+    body=el("div",{class:"A-panel"},
+      el("div",{class:"banner bad"}, el("span",{},"⛔"),
+        el("div",{}, el("strong",{},"Can't solve — Round "+st.fail.round+" is short-staffed."),
+          el("div",{},`Needs ${st.fail.demand} referee-slots but only ${st.fail.avail} refs are available that round. Add availability or reduce matches, then Generate again.`))),
+      el("div",{style:"margin-top:16px"}, el("button",{class:"primary",onclick:()=>begin(false)},"⚙ Generate")));
+  } else { // done
+    const d=st.result;
+    body=el("div",{class:"A-panel"},
+      el("div",{style:"display:flex;align-items:center;gap:10px"}, el("span",{style:"font-size:22px"}, d.cancelled?"⏹":"✓"),
+        el("h2",{}, d.cancelled?"Cancelled — kept best so far":"Schedule generated")),
+      el("div",{style:"margin:14px 0 18px"}, ticker({bestScore:d.score,iters:d.iters,elapsedMs:d.elapsedMs},true)),
+      d.bent?el("div",{class:"banner warn",style:"margin-bottom:16px"}, el("span",{},"⚠"),
+        el("div",{}, el("strong",{},"Budget reached with a soft rule bent."),
+          el("div",{},"Some referees have 3 consecutive active duties — physically forced (short-staffed rounds). See Warnings in Review."))):null,
+      el("div",{style:"display:flex;gap:12px"},
+        el("button",{class:"primary"},"Go to Review →"),
+        el("button",{onclick:()=>begin(false)},"⚙ Regenerate"), el("button",{onclick:()=>begin(true)},"⟳ Reshuffle")));
+  }
+  return el("div",{class:"C-wrap"}, wizardNav(2),
+    el("div",{class:"C-main"}, el("h2",{style:"margin-bottom:4px"},"Generate"), el("p",{class:"muted",style:"margin-bottom:20px"},"Step 3 of 5"), body));
+}
+
+// ========================================================= VARIANT B — blocking modal over frozen grid
+// Solve pops a centered modal (spinner + ticker) over a DIMMED, FROZEN Review grid. Cancel offers a
+// choice: keep best-so-far vs discard (restore previous). Grid updates only when the modal closes.
+function VariantB(){
+  const st=VariantB._st||(VariantB._st={open:false,prog:null,fail:null});
+  const rerender=()=>render();
+  function begin(){
+    st.open=true; st.prog=null; st.fail=null;
+    SOLVE.start({budgetMs:2000,
+      onProgress:p=>{st.prog=p; const t=document.getElementById("B-ticker"); if(t)t.replaceChildren(ticker(p,true));},
+      onDone:d=>{ st.open=false; if(!d.cancelled){seedCounter++; GRID=buildGrid(seedCounter);} st.lastDone=d; rerender();},
+      onFail:f=>{st.fail=f; rerender();}});
+    rerender();
+  }
+  const toolbar=el("div",{style:"display:flex;align-items:center;gap:12px;margin-bottom:16px"},
+    el("h2",{},"Review — Day 1"), el("span",{style:"flex:1"}),
+    el("button",{class:"primary",onclick:begin},"⚙ Generate"),
+    el("button",{onclick:begin},"⟳ Reshuffle"));
+  const grid=gridTable(GRID,{cls:st.open?"frozen":""});
+  const layers=[ el("div",{class:"C-main"}, toolbar,
+      st.lastDone&&st.lastDone.bent?el("div",{class:"banner warn",style:"margin-bottom:12px"},el("span",{},"⚠"),el("span",{},"Rest rule bent for 2 refs — forced by short-staffed rounds. See Warnings.")):null,
+      grid) ];
+  if(st.open){
+    let modal;
+    if(st.fail){
+      modal=el("div",{class:"modal"},
+        el("div",{class:"banner bad"}, el("span",{},"⛔"),
+          el("div",{}, el("strong",{},"Round "+st.fail.round+" short-staffed"),
+            el("div",{},`Needs ${st.fail.demand} slots, ${st.fail.avail} refs available. Fix availability and try again.`))),
+        el("div",{style:"text-align:right;margin-top:16px"}, el("button",{class:"primary",onclick:()=>{st.open=false;st.fail=null;rerender();}},"Close & fix")));
+    } else {
+      modal=el("div",{class:"modal"},
+        el("div",{style:"display:flex;align-items:center;gap:12px;margin-bottom:8px"}, el("div",{class:"spinner"}), el("h3",{},"Solving Day 1…")),
+        el("div",{id:"B-ticker",style:"margin:12px 0 6px"}, ticker(st.prog,true)),
+        el("p",{class:"muted",style:"font-size:12px;margin:8px 0 18px"},"The grid behind is frozen until the solve finishes."),
+        el("div",{style:"display:flex;gap:10px;justify-content:flex-end"},
+          el("button",{onclick:()=>SOLVE.cancel()},"Keep best so far"),
+          el("button",{class:"ghost",style:"color:var(--bad)",onclick:()=>{SOLVE.stop();st.open=false;rerender();}},"Discard — keep previous")));
+    }
+    layers.push(el("div",{class:"B-scrim"}, modal));
+  }
+  return el("div",{class:"C-wrap"}, wizardNav(3), ...layers);
+}
+
+// ========================================================= VARIANT C — non-blocking live grid
+// No modal. Generate morphs into Cancel; a slim indeterminate strip + compact inline ticker sit under
+// the toolbar; the grid LIVE-UPDATES as best-so-far improves (cells flash on change). Cancel keeps what's shown.
+function VariantC(){
+  const st=VariantC._st||(VariantC._st={running:false,prog:null,fail:null,done:null});
+  const rerender=()=>render();
+  function begin(){
+    st.running=true; st.prog=null; st.fail=null; st.done=null;
+    SOLVE.start({budgetMs:2000,
+      onProgress:p=>{ st.prog=p;
+        // live grid: reseed to visualize best-so-far changing, flash changed cells
+        if(p.iters % 3 < 2){ seedCounter++; GRID=buildGrid(seedCounter); }
+        paintLive();
+      },
+      onDone:d=>{ st.running=false; st.done=d; rerender();
+        if(!d.cancelled){ /* keep last GRID as final */ } },
+      onFail:f=>{ st.running=false; st.fail=f; rerender(); }});
+    rerender();
+  }
+  function paintLive(){
+    const strip=document.getElementById("C-live"); if(!strip)return;
+    document.getElementById("C-tick").replaceChildren(
+      el("span",{},"best "), el("strong",{class:"mono"},st.prog.bestScore),
+      el("span",{}," · "), el("span",{class:"mono"},fmtIters(st.prog.iters)+" iters"),
+      el("span",{}," · "), el("span",{class:"mono"},fmtSec(st.prog.elapsedMs)));
+    const host=document.getElementById("C-grid");
+    if(host){ const g=gridTable(GRID); g.classList.add("flash"); host.replaceChildren(g); }
+  }
+  const toolbar=el("div",{style:"display:flex;align-items:center;gap:12px;margin-bottom:6px"},
+    el("h2",{},"Review — Day 1"), el("span",{style:"flex:1"}),
+    st.running
+      ? el("button",{class:"danger",onclick:()=>SOLVE.cancel()},"✕ Cancel (keep current)")
+      : el("button",{class:"primary",onclick:begin},"⚙ Generate"),
+    el("button",{disabled:st.running,onclick:begin},"⟳ Reshuffle"));
+  const strip = st.running
+    ? el("div",{}, el("div",{class:"C-strip",id:"C-live"}, el("i",{})),
+        el("div",{class:"C-inlineticker",id:"C-tick",style:"margin-bottom:12px"},"starting…"))
+    : el("div",{style:"height:8px"});
+  const banner = st.fail
+    ? el("div",{class:"banner bad",style:"margin-bottom:12px"}, el("span",{},"⛔"),
+        el("span",{}, el("strong",{},"Round "+st.fail.round+" short-staffed — "),`needs ${st.fail.demand} slots, ${st.fail.avail} available. No solve started.`))
+    : (st.done&&st.done.bent
+        ? el("div",{class:"banner warn",style:"margin-bottom:12px"}, el("span",{},"⚠"), el("span",{},"Rest rule bent for 2 refs — forced by short-staffed rounds. See Warnings."))
+        : null);
+  const toast = st.done ? el("div",{class:"toast"}, st.done.cancelled?"⏹ Cancelled — kept current schedule":`✓ Done · score ${st.done.score} · ${st.done.bent?"1 warning":"no warnings"}`) : null;
+  return el("div",{class:"C-wrap"}, wizardNav(3),
+    el("div",{class:"C-main"}, toolbar, strip, banner, el("div",{id:"C-grid"}, gridTable(GRID)), toast));
+}
+
+// ---------------- switcher + router + scenario ----------------
+const VARIANTS={A:["Inline solve screen",VariantA],B:["Blocking modal",VariantB],C:["Non-blocking live grid",VariantC]};
+const order=["A","B","C"];
+function current(){ const v=new URLSearchParams(location.search).get("variant"); return VARIANTS[v]?v:"A"; }
+function setVariant(v){ SOLVE.stop(); const u=new URL(location); u.searchParams.set("variant",v); history.replaceState(null,"",u);
+  VariantA._st=VariantB._st=VariantC._st=null; GRID=buildGrid(0); render(); }
+function cycle(d){ setVariant(order[(order.indexOf(current())+d+order.length)%order.length]); }
+
+function render(){
+  const v=current();
+  document.getElementById("root").replaceChildren(VARIANTS[v][1]());
+  document.getElementById("sw").replaceChildren(
+    el("button",{onclick:()=>cycle(-1)},"‹"),
+    el("div",{class:"lab"}, `${v} — ${VARIANTS[v][0]}`, el("div",{class:"hint"},"← / → to switch")),
+    el("button",{onclick:()=>cycle(1)},"›"),
+    el("select",{onchange:e=>{SOLVE.scenario=e.target.value; SOLVE.stop(); VariantA._st=VariantB._st=VariantC._st=null; render();}},
+      el("option",{value:"normal"},"scenario: normal"),
+      el("option",{value:"precheck"},"scenario: precheck-fail"),
+      el("option",{value:"tight"},"scenario: tight (forced bend)")));
+  const sel=document.querySelector("#sw select"); if(sel)sel.value=SOLVE.scenario;
+}
+addEventListener("keydown",e=>{ const t=e.target.tagName; if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT"||e.target.isContentEditable)return;
+  if(e.key==="ArrowLeft")cycle(-1); if(e.key==="ArrowRight")cycle(1); });
+render();
+</script>
+</body>
+</html>
