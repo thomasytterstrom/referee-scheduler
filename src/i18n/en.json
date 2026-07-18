@@ -62,6 +62,13 @@
       "inProgress": "Generating…",
       "cancel": "Cancel",
       "elapsed": "{seconds}s elapsed",
+      "stat": {
+        "score": "Best score",
+        "iters": "Iterations",
+        "elapsed": "Elapsed"
+      },
+      "blockedTitle": "Can't generate yet",
+      "closeFix": "Close & fix",
       "bentBanner": "Generated with some fairness rules bent — see warnings.",
       "placeholder": "Generation runs here in a later step."
     },

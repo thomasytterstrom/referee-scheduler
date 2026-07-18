@@ -7,13 +7,14 @@ import { Grid } from "../grid/Grid.tsx";
 import { StepHeader } from "../components/StepHeader.tsx";
 import styles from "./Wizard.module.css";
 
-export function ReviewStep() {
+export function ReviewStep({ bent = false }: { bent?: boolean }) {
   const store = useStore();
   const day = store.tournament.days[store.dayIndex];
 
   return (
     <div className={styles.step}>
       <StepHeader title={t("wizard.review.title")} subtitle={t("wizard.review.subtitle")} />
+      {bent && <div className={styles.bentBanner}>{t("wizard.generate.bentBanner")}</div>}
       {day ? (
         <Grid
           tournament={store.tournament}

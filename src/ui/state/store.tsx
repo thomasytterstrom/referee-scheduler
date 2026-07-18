@@ -11,6 +11,8 @@ import { newCourtId, newRefId } from "../../model/tournament.ts";
 import type { ImportInput, MergeResult } from "../../import/fixtures.ts";
 import { mergeImport } from "../../import/fixtures.ts";
 import type { SlotKind } from "../grid/Grid.tsx";
+import type { Sol } from "../../domain/types.ts";
+import { applySol, type RefIndexMap } from "../../model/adapter.ts";
 import { createAutosave } from "../../persistence/db.ts";
 
 export interface Store {
@@ -44,6 +46,10 @@ export interface Store {
   // (ui-spec: an override is a lock the generator respects); clearing it unpins.
   onPin(matchId: string, slot: SlotKind, pinned: boolean): void;
   onOverride(matchId: string, slot: SlotKind, refId: string | null): void;
+
+  // Commit a solved Sol back into a day (Task 9 solve controller). The single atomic swap point:
+  // clone the tournament, write the solution onto the target day, publish + autosave.
+  applySolution(dayIndex: number, sol: Sol, map: RefIndexMap): void;
 }
 
 // Make every current referee available (all rounds) on every day that does not already list them.
@@ -219,6 +225,13 @@ export function StoreProvider({ initial, children }: { initial: StoreInit; child
         if (!slot) return;
         slot.refId = refId;
         slot.pinned = refId !== null;
+      });
+    },
+
+    applySolution(di, sol, map) {
+      mutate((t) => {
+        const day = t.days[di];
+        if (day) applySol(day, sol, map);
       });
     },
   };

@@ -11,6 +11,8 @@ import { ImportStep } from "./ImportStep.tsx";
 import { GenerateStep } from "./GenerateStep.tsx";
 import { ReviewStep } from "./ReviewStep.tsx";
 import { ExportStep } from "./ExportStep.tsx";
+import { useSolveController } from "../solve/solveController.ts";
+import { GenerateModal } from "../solve/GenerateModal.tsx";
 import styles from "./Wizard.module.css";
 
 const STEPS = ["setup", "import", "generate", "review", "export"] as const;
@@ -19,13 +21,12 @@ type Step = (typeof STEPS)[number];
 export interface WizardProps {
   /** Return to the tournament picker. */
   onExit?: () => void;
-  /** Task 9 seam: wire the solve controller + Generate modal. Buttons are inert until provided. */
-  onGenerate?: (mode: "generate" | "reshuffle") => void;
 }
 
-export function Wizard({ onExit, onGenerate }: WizardProps) {
+export function Wizard({ onExit }: WizardProps) {
   const store = useStore();
   const [step, setStep] = useState<Step>("setup");
+  const solve = useSolveController();
 
   return (
     <div className={styles.app}>
@@ -65,11 +66,18 @@ export function Wizard({ onExit, onGenerate }: WizardProps) {
         <section className={styles.content}>
           {step === "setup" && <SetupStep />}
           {step === "import" && <ImportStep />}
-          {step === "generate" && <GenerateStep onGenerate={onGenerate} />}
-          {step === "review" && <ReviewStep />}
+          {step === "generate" && <GenerateStep onGenerate={solve.start} />}
+          {step === "review" && <ReviewStep bent={solve.lastRun?.bent ?? false} />}
           {step === "export" && <ExportStep />}
         </section>
       </main>
+
+      <GenerateModal
+        state={solve.state}
+        onCancel={solve.cancel}
+        onClose={solve.dismiss}
+        subscribeTicker={solve.subscribeTicker}
+      />
     </div>
   );
 }
