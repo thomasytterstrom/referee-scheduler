@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Matt Pocock skills tooling (not part of the app)
+skills-lock.json
