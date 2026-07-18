@@ -112,6 +112,7 @@ export interface SolveOpts {
   onProgress?: (p: Progress) => void; // periodic tick (worker → main); cadence = progressMs
   progressMs?: number; // min ms between onProgress ticks (default 120)
   shouldCancel?: () => boolean; // checked between iteration batches; true → stop, keep best-so-far
+  patienceMs?: number; // no bestScore improvement for this long → stop early (default 300)
 }
 
 export interface SolveResult {
@@ -120,7 +121,7 @@ export interface SolveResult {
   iters: number;
   accepts: number;
   ms: number;
-  reason: "budget" | "cancelled"; // why the loop ended (worker's Done.reason)
+  reason: "budget" | "cancelled" | "converged"; // why the loop ended (worker's Done.reason)
 }
 
 export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
@@ -134,21 +135,28 @@ export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
   const t0 = opts.t0 ?? (warm ? 400 : 4000);
   const tEnd = opts.tEnd ?? 0.5;
   const progressMs = opts.progressMs ?? 120;
+  const patienceMs = opts.patienceMs ?? 300;
   const start = Date.now();
   let iters = 0;
   let accepts = 0;
   let lastProgress = 0;
-  let reason: "budget" | "cancelled" = "budget";
+  let lastImproveMs = 0;
+  let reason: "budget" | "cancelled" | "converged" = "budget";
 
   // Geometric cool re-derived from elapsed fraction so it tracks the wall-clock budget.
   while (true) {
     const elapsed = Date.now() - start;
-    if (elapsed >= opts.budgetMs) break;
     // Cooperative cancel — checked between batches, returns best-so-far (never "no solution").
     if (opts.shouldCancel && opts.shouldCancel()) {
       reason = "cancelled";
       break;
     }
+    // No improvement for patienceMs → the anneal has settled; stop before burning the whole budget.
+    if (elapsed - lastImproveMs >= patienceMs) {
+      reason = "converged";
+      break;
+    }
+    if (elapsed >= opts.budgetMs) break; // reason stays "budget" (its default)
     // Progress tick on a time gate, not per-iteration (keeps the UI from thrashing).
     if (opts.onProgress && elapsed - lastProgress >= progressMs) {
       opts.onProgress({ elapsedMs: elapsed, bestScore, iters });
@@ -169,6 +177,7 @@ export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
         if (curScore < bestScore) {
           bestScore = curScore;
           best = cloneSol(cur);
+          lastImproveMs = elapsed;
         }
       } else {
         undo();

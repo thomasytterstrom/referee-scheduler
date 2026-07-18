@@ -41,7 +41,7 @@ export type SolveState =
 
 export interface LastRun {
   bent: boolean; // a soft fairness rule (rest / Head / Assistant balance) was forced off target
-  reason: "budget" | "cancelled";
+  reason: "budget" | "cancelled" | "converged";
 }
 
 export interface SolveController {
