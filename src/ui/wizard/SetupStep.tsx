@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useStore } from "../state/store.tsx";
+import { useDirectory } from "../state/directory.tsx";
+import { sortByName } from "../../model/directory.ts";
 import { t } from "../../i18n/t.ts";
 import { refColor } from "../grid/refColor.ts";
 import { Button } from "../components/Button.tsx";
@@ -10,15 +12,21 @@ import styles from "./Wizard.module.css";
 
 export function SetupStep() {
   const store = useStore();
+  const dir = useDirectory();
   const [refName, setRefName] = useState("");
   const [courtName, setCourtName] = useState("");
   const day = store.tournament.days[store.dayIndex];
 
+  // Suggest directory referees not already in this roster (add-existing); a new name creates one.
+  const rosterIds = new Set(store.tournament.referees.map((r) => r.id));
+  const suggestions = sortByName(dir.library).filter((r) => !rosterIds.has(r.id));
+
   const addReferee = () => {
-    if (refName.trim()) {
-      store.addReferee(refName);
-      setRefName("");
-    }
+    const name = refName.trim();
+    if (!name) return;
+    const { ref } = dir.addByName(name); // create-or-reuse in the directory (auto-upsert)
+    store.addReferee(ref); // add the snapshot to this tournament's roster
+    setRefName("");
   };
   const addCourt = () => {
     if (courtName.trim()) {
@@ -60,10 +68,16 @@ export function SetupStep() {
             <input
               className={styles.rowInput}
               value={refName}
+              list="referee-library"
               placeholder={t("wizard.setup.refereeName")}
               onChange={(e) => setRefName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addReferee()}
             />
+            <datalist id="referee-library">
+              {suggestions.map((r) => (
+                <option key={r.id} value={r.name} />
+              ))}
+            </datalist>
             <Button variant="primary" disabled={!refName.trim()} onClick={addReferee}>
               {t("wizard.setup.addReferee")}
             </Button>

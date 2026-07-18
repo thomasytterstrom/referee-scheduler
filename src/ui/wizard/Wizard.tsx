@@ -70,7 +70,7 @@ export function Wizard({ onExit }: WizardProps) {
           {step === "review" && (
             <ReviewStep
               bent={solve.lastRun?.bent ?? false}
-              runReason={solve.lastRun?.reason ?? null}
+              runReason={solve.lastRun?.reason === "converged" ? null : (solve.lastRun?.reason ?? null)}
             />
           )}
           {step === "export" && <ExportStep />}

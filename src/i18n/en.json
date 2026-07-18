@@ -34,7 +34,7 @@
       "availability": "Availability",
       "addReferee": "Add referee",
       "addCourt": "Add court",
-      "refereeName": "Referee name",
+      "refereeName": "Referee name (existing or new)",
       "courtName": "Court name",
       "noReferees": "No referees yet — add your roster.",
       "noCourts": "No courts yet — add courts or import a schedule.",
@@ -193,5 +193,13 @@
     "unavailable": "Unavailable",
     "load": "{count} / {target}",
     "empty": "No referees available this day."
+  },
+  "library": {
+    "title": "Referees library",
+    "subtitle": "Saved referee names, reused across tournaments. Add referees in a tournament's Setup; rename or remove them here.",
+    "empty": "No saved referees yet — add referees in a tournament's Setup.",
+    "rename": "Rename referee",
+    "duplicate": "A referee named “{name}” already exists.",
+    "confirmDelete": "Remove “{name}” from the library? Tournaments already using this referee keep their copy."
   }
 }

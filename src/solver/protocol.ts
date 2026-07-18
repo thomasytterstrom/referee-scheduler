@@ -36,7 +36,7 @@ export interface DoneMsg {
   sol: Sol;
   score: number;
   breakdown: Score; // per-constraint penalties → warn banner + Warnings panel (ticket 09)
-  reason: "budget" | "cancelled";
+  reason: "budget" | "cancelled" | "converged";
 }
 
 export type OutMsg = ProgressMsg | DoneMsg;

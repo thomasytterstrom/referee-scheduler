@@ -5,8 +5,10 @@
 import { useEffect, useState } from "react";
 import { getLastOpenedId, loadTournament, setLastOpenedId } from "./persistence/db.ts";
 import { StoreProvider } from "./ui/state/store.tsx";
+import { DirectoryProvider } from "./ui/state/directory.tsx";
 import { Wizard } from "./ui/wizard/Wizard.tsx";
 import { TournamentPicker } from "./ui/picker/TournamentPicker.tsx";
+import { RefereeLibrary } from "./ui/picker/RefereeLibrary.tsx";
 import type { Active } from "./ui/picker/TournamentPicker.tsx";
 
 function App() {
@@ -30,12 +32,22 @@ function App() {
   };
 
   if (loading) return null;
-  if (!active) return <TournamentPicker onOpen={openActive} />;
 
+  // DirectoryProvider wraps both branches so the referee library survives switching tournaments and is
+  // reachable from Setup (add existing/new) and the picker home (manage the library).
   return (
-    <StoreProvider key={active.id} initial={active}>
-      <Wizard onExit={() => setActive(null)} />
-    </StoreProvider>
+    <DirectoryProvider>
+      {active ? (
+        <StoreProvider key={active.id} initial={active}>
+          <Wizard onExit={() => setActive(null)} />
+        </StoreProvider>
+      ) : (
+        <>
+          <TournamentPicker onOpen={openActive} />
+          <RefereeLibrary />
+        </>
+      )}
+    </DirectoryProvider>
   );
 }
 

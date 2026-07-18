@@ -112,6 +112,7 @@ export interface SolveOpts {
   onProgress?: (p: Progress) => void; // periodic tick (worker → main); cadence = progressMs
   progressMs?: number; // min ms between onProgress ticks (default 120)
   shouldCancel?: () => boolean; // checked between iteration batches; true → stop, keep best-so-far
+  patienceMs?: number; // no bestScore improvement for this long → stop early (default 300)
 }
 
 export interface SolveResult {
@@ -120,13 +121,49 @@ export interface SolveResult {
   iters: number;
   accepts: number;
   ms: number;
-  reason: "budget" | "cancelled"; // why the loop ended (worker's Done.reason)
+  reason: "budget" | "cancelled" | "converged"; // why the loop ended (worker's Done.reason)
+}
+
+// Fill unassigned required slots in an existing partial schedule, respecting all current
+// assignments. Used before warm-start annealing so SA always begins from a complete schedule
+// and never needs to discover assignments from an empty state (where score is 0 = "optimal").
+function fillGaps(p: Problem, s: Sol, carry: Carry, rng: Rng): void {
+  const load = new Float64Array(p.N);
+  for (let r = 0; r < p.N; r++) load[r] = carry.H[r] + carry.A[r];
+  for (let m = 0; m < p.matches.length; m++) {
+    if (s.head[m] >= 0) load[s.head[m]]++;
+    if (s.asst[m] >= 0) load[s.asst[m]]++;
+  }
+  for (let rd = 0; rd < p.R; rd++) {
+    const used = new Set<number>();
+    for (const m of p.roundMatches[rd]) {
+      if (s.head[m] >= 0) used.add(s.head[m]);
+      if (s.asst[m] >= 0) used.add(s.asst[m]);
+    }
+    for (const wantAsst of [false, true]) {
+      for (const m of p.roundMatches[rd]) {
+        const mt = p.matches[m];
+        if (!wantAsst) {
+          if (s.head[m] >= 0) continue;
+          const pick = leastLoaded(p, rng, load, used, rd, -1);
+          if (pick >= 0) { s.head[m] = pick; used.add(pick); load[pick]++; }
+        } else {
+          if (!mt.needA || s.asst[m] >= 0) continue;
+          const pick = leastLoaded(p, rng, load, used, rd, s.head[m]);
+          if (pick >= 0) { s.asst[m] = pick; used.add(pick); load[pick]++; }
+        }
+      }
+    }
+  }
 }
 
 export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
   const rng = makeRng(opts.seed);
   const warm = opts.warmStart !== undefined;
   const cur = warm ? cloneSol(opts.warmStart!) : greedy(p, carry, rng, opts.pins);
+  // Warm-start may have unassigned slots (e.g. first Generate on an empty day). Fill them
+  // greedily before annealing — SA has no incentive to fill gaps (empty slot scores 0).
+  if (warm) fillGaps(p, cur, carry, rng);
   let curScore = scoreDay(p, cur, carry).total;
   let best = cloneSol(cur);
   let bestScore = curScore;
@@ -134,21 +171,28 @@ export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
   const t0 = opts.t0 ?? (warm ? 400 : 4000);
   const tEnd = opts.tEnd ?? 0.5;
   const progressMs = opts.progressMs ?? 120;
+  const patienceMs = opts.patienceMs ?? 300;
   const start = Date.now();
   let iters = 0;
   let accepts = 0;
   let lastProgress = 0;
-  let reason: "budget" | "cancelled" = "budget";
+  let lastImproveMs = 0;
+  let reason: "budget" | "cancelled" | "converged" = "budget";
 
   // Geometric cool re-derived from elapsed fraction so it tracks the wall-clock budget.
   while (true) {
     const elapsed = Date.now() - start;
-    if (elapsed >= opts.budgetMs) break;
     // Cooperative cancel — checked between batches, returns best-so-far (never "no solution").
     if (opts.shouldCancel && opts.shouldCancel()) {
       reason = "cancelled";
       break;
     }
+    // No improvement for patienceMs → the anneal has settled; stop before burning the whole budget.
+    if (elapsed - lastImproveMs >= patienceMs) {
+      reason = "converged";
+      break;
+    }
+    if (elapsed >= opts.budgetMs) break; // reason stays "budget" (its default)
     // Progress tick on a time gate, not per-iteration (keeps the UI from thrashing).
     if (opts.onProgress && elapsed - lastProgress >= progressMs) {
       opts.onProgress({ elapsedMs: elapsed, bestScore, iters });
@@ -169,6 +213,7 @@ export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
         if (curScore < bestScore) {
           bestScore = curScore;
           best = cloneSol(cur);
+          lastImproveMs = elapsed;
         }
       } else {
         undo();

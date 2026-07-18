@@ -116,6 +116,19 @@ describe("solve — Web Worker hooks (progress / cancel / reason / pin seed)", (
     expect(validate(p, res.sol)).toEqual([]);
   });
 
+  test("long budget on a tiny/easy problem converges before the budget runs out", () => {
+    const p = genProblem(4, 1, 4, 21);
+    const res = solve(p, emptyCarry(4), { budgetMs: 3000, seed: 21 });
+    expect(res.reason).toBe("converged");
+    expect(res.ms).toBeLessThan(2000);
+  });
+
+  test("very short budget reports reason 'budget' (budget hit before patience elapses)", () => {
+    const p = genProblem(12, 5, 8, 6);
+    const res = solve(p, emptyCarry(12), { budgetMs: 5, seed: 6 });
+    expect(res.reason).toBe("budget");
+  });
+
   test("pinsOnly keeps only locked slots and clears the rest", () => {
     const s = emptySol(3);
     s.head[0] = 4;

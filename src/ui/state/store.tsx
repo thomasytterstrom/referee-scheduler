@@ -7,7 +7,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Assignment, Court, Day, Match, Referee, Tournament } from "../../model/tournament.ts";
-import { newCourtId, newRefId } from "../../model/tournament.ts";
+import { newCourtId } from "../../model/tournament.ts";
 import type { ImportInput, MergeResult } from "../../import/fixtures.ts";
 import { mergeImport } from "../../import/fixtures.ts";
 import type { SlotKind } from "../grid/Grid.tsx";
@@ -24,7 +24,9 @@ export interface Store {
   setName(name: string): void;
   setDayIndex(i: number): void;
 
-  addReferee(name: string): void;
+  // Add a referee (from the directory) to this tournament's roster; dedups by id. The name is a
+  // snapshot copy — later directory/other-tournament renames do not propagate here.
+  addReferee(ref: Referee): void;
   renameReferee(id: string, name: string): void;
   removeReferee(id: string): void;
 
@@ -122,12 +124,10 @@ export function StoreProvider({ initial, children }: { initial: StoreInit; child
     setName,
     setDayIndex,
 
-    addReferee(refName) {
-      const trimmed = refName.trim();
-      if (!trimmed) return;
+    addReferee(ref) {
       mutate((t) => {
-        const ref: Referee = { id: newRefId(), name: trimmed };
-        t.referees.push(ref);
+        if (t.referees.some((r) => r.id === ref.id)) return; // already in this roster (dedup by id)
+        t.referees.push({ id: ref.id, name: ref.name });
         for (const day of t.days) day.availability[ref.id] = null;
       });
     },
