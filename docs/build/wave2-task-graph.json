@@ -1,0 +1,136 @@
+{
+  "plan": "docs/build/wave2-plan.md",
+  "created": "2026-07-18",
+  "repo": "referee-scheduler",
+  "note": "Wave 2 of the build (handoff-spec.md steps 4-6). Domain core + Web Worker (steps 2-3) already done. Root is the Tournament model+adapter, NOT import/persistence. Full task detail in the plan file; each task also points at its settled spec under docs/.",
+  "waves": [
+    ["1", "4"],
+    ["2", "3", "6", "7", "8", "10"],
+    ["5"],
+    ["9"],
+    ["11"]
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "subject": "Task 1: Canonical Tournament model + solver adapter + live carryover",
+      "description": "Create the serializable Tournament graph (Referee/Court/Day/Round/Match/Assignment/Slot, stable ids) per domain-model.md; adapter Tournament<->Problem/Sol per day; carryoverFor() folding finalized earlier days via domain/carry. Widen Vitest include to src/{domain,model,import,persistence}. Round-trip + carryover tests. THE WAVE ROOT.",
+      "blockedBy": [],
+      "files": {
+        "create": ["src/model/tournament.ts", "src/model/adapter.ts", "src/model/carryover.ts", "src/model/tournament.test.ts", "src/model/adapter.test.ts", "src/model/carryover.test.ts"],
+        "modify": ["vite.config.ts"],
+        "test": ["src/model/tournament.test.ts", "src/model/adapter.test.ts", "src/model/carryover.test.ts"]
+      }
+    },
+    {
+      "id": "2",
+      "subject": "Task 2: Import — SheetJS fixtures -> Tournament (merge on re-import)",
+      "description": "One detector for xlsx/paste/csv -> Tournament patch. Swedish column map, round = distinct-sorted Starttid rank, Klass H/D -> M/W, requiresAssistant default true, highlight from Matchnamn, merge by Kamp Id preserving assignments/pins + flagging moves, per-row errors. Test against reference/federation-export-sample.tsv. Spec: persistence-spec.md 1.",
+      "blockedBy": ["1"],
+      "files": {
+        "create": ["src/import/columns.ts", "src/import/fixtures.ts", "src/import/fixtures.test.ts"],
+        "modify": [],
+        "test": ["src/import/fixtures.test.ts"]
+      }
+    },
+    {
+      "id": "3",
+      "subject": "Task 3: Persistence — serialize/migrate + IndexedDB library",
+      "description": "serialize/deserialize around {schemaVersion:1, exportedAt, appVersion, tournament}; migrate() refuses newer / runs vN->vN+1 / loads equal (v1 only, seam present); db.ts IndexedDB library of N via idb + lastOpenedId meta + debounced autosave (~500ms). Carryover never serialized. Spec: persistence-spec.md 0/2/3.",
+      "blockedBy": ["1"],
+      "files": {
+        "create": ["src/persistence/serialize.ts", "src/persistence/migrate.ts", "src/persistence/db.ts", "src/persistence/serialize.test.ts", "src/persistence/migrate.test.ts"],
+        "modify": [],
+        "test": ["src/persistence/serialize.test.ts", "src/persistence/migrate.test.ts"]
+      }
+    },
+    {
+      "id": "4",
+      "subject": "Task 4: i18n catalogue + t() helper",
+      "description": "Hand-rolled t(key, params) with named-placeholder substitution against en.json; no i18n library. English ships; sv.json later is a mechanical swap. Strings drawn from warnings-spec.md + ui-spec.md. WAVE ROOT (no deps).",
+      "blockedBy": [],
+      "files": {
+        "create": ["src/i18n/en.json", "src/i18n/t.ts", "src/i18n/t.test.ts"],
+        "modify": [],
+        "test": ["src/i18n/t.test.ts"]
+      }
+    },
+    {
+      "id": "5",
+      "subject": "Task 5: Wizard shell — Setup/Import/Export steps + app state + autosave",
+      "description": "Wizard scaffold (Setup->Import->Generate->Review->Export) + tournament picker on launch (lastOpenedId); Setup roster entry, Import step wiring fixtures->store, Export JSON download + IndexedDB autosave. Grid/review/print slot in via Task 11. Spec: ui-spec.md, persistence-spec.md 2.2.",
+      "blockedBy": ["2", "3", "4"],
+      "files": {
+        "create": ["src/ui/wizard/", "src/ui/state/", "src/ui/components/"],
+        "modify": ["src/App.tsx", "src/main.tsx"],
+        "test": []
+      }
+    },
+    {
+      "id": "6",
+      "subject": "Task 6: Round×court editable grid (primary review surface)",
+      "description": "Dense sparse round×court grid from a Tournament day; pin toggle + override dropdown mutate Slot; per-ref color by stable id; idle/not-refereed cells; disabled during solve. Standalone, props-fed. Spec: ui-spec.md, domain-model.md (cell=(round,court)).",
+      "blockedBy": ["1", "4"],
+      "files": {
+        "create": ["src/ui/grid/"],
+        "modify": [],
+        "test": []
+      }
+    },
+    {
+      "id": "7",
+      "subject": "Task 7: Per-referee review view (timeline + fairness bars)",
+      "description": "Per-ref duty timeline across rounds + H/A fairness bars from the score breakdown. Read-only; plugs into the Review drawer (Task 11). Spec: ui-spec.md.",
+      "blockedBy": ["1", "4"],
+      "files": {
+        "create": ["src/ui/referee-view/"],
+        "modify": [],
+        "test": []
+      }
+    },
+    {
+      "id": "8",
+      "subject": "Task 8: Warnings panel (3 severity tiers)",
+      "description": "From Score breakdown + schedule, surface all nonzero soft constraints by tier (Blocker/Forced/Bent) with exact English catalogue strings; per-instance lines recomputed on main (no new worker fields); green empty state; no 'solver' in any string. Spec: warnings-spec.md.",
+      "blockedBy": ["1", "4"],
+      "files": {
+        "create": ["src/ui/warnings/"],
+        "modify": [],
+        "test": []
+      }
+    },
+    {
+      "id": "9",
+      "subject": "Task 9: Generate modal + worker solve controller (state machine)",
+      "description": "Main-thread synchronous precheck (fail->modal error, no worker); ok->spawn worker, post SolveReq (Generate warmStart:true / Reshuffle new seed warmStart:false), patch ticker on progress, on done wait max(0,600-elapsed) then apply atomically + warn banner if bent; Cancel keeps best-so-far. Worker protocol already built. Spec: issues/07-solve-progress-ui.md.",
+      "blockedBy": ["5", "6"],
+      "files": {
+        "create": ["src/ui/solve/solveController.ts", "src/ui/solve/GenerateModal.tsx"],
+        "modify": ["src/ui/wizard/"],
+        "test": []
+      }
+    },
+    {
+      "id": "10",
+      "subject": "Task 10: Print / export views (@media print)",
+      "description": "Three print layouts (wall grid landscape, per-ref duty slips 2-up portrait, per-court call sheets portrait) via @media print + @page per artifact; id-color dot print-color-adjust:exact; gender text; header tournament·day·generated-at. Standalone. Spec: print-spec.md.",
+      "blockedBy": ["1", "4"],
+      "files": {
+        "create": ["src/ui/print/"],
+        "modify": [],
+        "test": []
+      }
+    },
+    {
+      "id": "11",
+      "subject": "Task 11: Review/Export assembly + end-to-end smoke",
+      "description": "Wire grid + referee-view + warnings + Generate modal into the wizard Review step, and print into Export; full click-through on the sample fixture (import->roster->Generate->pin/override->Reshuffle->Export->print). Final integration; depends on everything.",
+      "blockedBy": ["5", "6", "7", "8", "9", "10"],
+      "files": {
+        "create": ["src/ui/review/"],
+        "modify": ["src/ui/wizard/", "src/App.tsx"],
+        "test": []
+      }
+    }
+  ]
+}
