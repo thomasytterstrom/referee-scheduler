@@ -1,8 +1,11 @@
-// Read-only per-referee review for ONE day: a duty timeline across the day's rounds plus simple
-// Head/Assistant fairness bars against each ref's availability-proportional target. Pure
-// presentational — derives everything from the Tournament model, never re-runs the schedule.
+// Read-only per-referee review. RefereeView covers ONE day: a duty timeline across the day's rounds
+// plus Head/Assistant fairness bars against each ref's availability-proportional target.
+// CumulativeFairness reuses those bars over every day through the selected one, to surface cross-day
+// imbalance a single day hides. Pure presentational — derived from the Tournament model, never re-runs
+// the schedule.
 
 import type { Tournament } from "../../model/tournament.ts";
+import { cumulativeRows } from "./cumulative.ts";
 import { t } from "../../i18n/t.ts";
 import styles from "./RefereeView.module.css";
 
@@ -184,6 +187,46 @@ function Bar({ count, target, max, color, role }: BarProps) {
         <div className={styles.tick} style={{ left: `${(target / max) * 100}%` }} />
       </div>
       <span className={styles.load}>{load}</span>
+    </div>
+  );
+}
+
+// Read-only cumulative fairness across the tournament so far — the day view's Head/Assistant bars,
+// but counted over every day through the selected one. Catches cross-day imbalance a single day hides.
+export function CumulativeFairness({ tournament, dayIndex }: RefereeViewProps) {
+  const rows = cumulativeRows(tournament, dayIndex);
+  const maxHead = Math.max(1, ...rows.map((r) => Math.max(r.head, r.targetHead)));
+  const maxAsst = Math.max(1, ...rows.map((r) => Math.max(r.asst, r.targetAsst)));
+
+  return (
+    <div className={styles.root}>
+      <div className={`${styles.row} ${styles.headerRow}`}>
+        <div className={styles.name}>{t("refereeView.cumulativeHeading", { day: dayIndex + 1 })}</div>
+        <div className={styles.fairness}>
+          <span className={styles.barLabel}>{t("common.role.head")}</span>
+          <span className={styles.barLabel}>{t("common.role.assistant")}</span>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className={styles.empty}>{t("refereeView.empty")}</div>
+      ) : (
+        rows.map((r) => {
+          const color = refColor(r.id);
+          return (
+            <div key={r.id} className={styles.row}>
+              <div className={styles.name}>
+                <span className={styles.dot} style={{ background: color }} />
+                {r.name}
+              </div>
+              <div className={styles.fairness}>
+                <Bar count={r.head} target={r.targetHead} max={maxHead} color={color} role={t("common.role.head")} />
+                <Bar count={r.asst} target={r.targetAsst} max={maxAsst} color={color} role={t("common.role.assistant")} />
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

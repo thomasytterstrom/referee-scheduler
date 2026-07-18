@@ -8,7 +8,7 @@ import type { Tournament } from "../../model/tournament.ts";
 import { toProblem } from "../../model/adapter.ts";
 import { carryoverFor } from "../../model/carryover.ts";
 import { scoreDay } from "../../domain/score.ts";
-import { RefereeView } from "../referee-view/RefereeView.tsx";
+import { RefereeView, CumulativeFairness } from "../referee-view/RefereeView.tsx";
 import { WarningsPanel } from "../warnings/WarningsPanel.tsx";
 import styles from "./ReviewDrawer.module.css";
 
@@ -27,6 +27,7 @@ export function ReviewDrawer({ tournament, dayIndex, runReason }: ReviewDrawerPr
     <section className={styles.drawer}>
       <div className={styles.timeline}>
         <RefereeView tournament={tournament} dayIndex={dayIndex} />
+        <CumulativeFairness tournament={tournament} dayIndex={dayIndex} />
       </div>
       <div className={styles.warnings}>
         <WarningsPanel

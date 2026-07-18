@@ -192,7 +192,8 @@
     "resting": "Resting",
     "unavailable": "Unavailable",
     "load": "{count} / {target}",
-    "empty": "No referees available this day."
+    "empty": "No referees available this day.",
+    "cumulativeHeading": "Totals through day {day}"
   },
   "library": {
     "title": "Referees library",
