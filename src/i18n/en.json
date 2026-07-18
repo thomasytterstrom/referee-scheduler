@@ -27,6 +27,7 @@
     },
     "setup": {
       "title": "Setup",
+      "subtitle": "Add referees and courts, then choose which courts run on each day.",
       "referees": "Referees",
       "courts": "Courts",
       "refsPerMatch": "Referees per match",
@@ -34,7 +35,10 @@
       "addReferee": "Add referee",
       "addCourt": "Add court",
       "refereeName": "Referee name",
-      "courtName": "Court name"
+      "courtName": "Court name",
+      "noReferees": "No referees yet — add your roster.",
+      "noCourts": "No courts yet — add courts or import a schedule.",
+      "courtsOnDay": "Courts on Day {day}"
     },
     "import": {
       "title": "Import",
@@ -43,23 +47,46 @@
       "upload": "Upload file",
       "rowsImported": "Imported {count} matches.",
       "rowsSkipped": "Skipped {count} rows.",
-      "rowError": "Row {row}: {message}"
+      "rowError": "Row {row}: {message}",
+      "added": "{count} new",
+      "moved": "{count} moved",
+      "removed": "{count} removed",
+      "warningsHeading": "Warnings",
+      "errorsHeading": "Row errors"
     },
     "generate": {
       "title": "Generate schedule",
+      "subtitle": "Fill every match with a Head and Assistant referee.",
       "run": "Generate",
       "reshuffle": "Reshuffle",
       "inProgress": "Generating…",
       "cancel": "Cancel",
       "elapsed": "{seconds}s elapsed",
-      "bentBanner": "Generated with some fairness rules bent — see warnings."
+      "bentBanner": "Generated with some fairness rules bent — see warnings.",
+      "placeholder": "Generation runs here in a later step."
+    },
+    "review": {
+      "title": "Review",
+      "subtitle": "Pin or override any slot — the grid edits the selected day.",
+      "empty": "No matches yet — import a schedule to review."
     },
     "export": {
       "title": "Export",
+      "subtitle": "Download a JSON backup or save to this browser's library.",
       "downloadJson": "Download JSON",
       "importJson": "Load JSON",
+      "saveLibrary": "Save to library",
+      "saved": "Saved to this browser's library.",
       "print": "Print"
-    }
+    },
+    "picker": {
+      "new": "New tournament",
+      "empty": "No saved tournaments yet.",
+      "updated": "Updated {date}",
+      "defaultName": "Untitled tournament",
+      "switch": "Switch tournament"
+    },
+    "nameLabel": "Tournament name"
   },
   "grid": {
     "toggle": { "overview": "Overview", "grid": "Grid" },
