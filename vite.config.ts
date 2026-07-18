@@ -8,7 +8,8 @@ export default defineConfig({
   base: '/referee-scheduler/',
   plugins: [react()],
   test: {
-    // Tests target the pure, DOM-free domain core only (MVP).
-    include: ['src/domain/**/*.test.ts'],
+    // Tests target the pure, DOM-free layers (domain/model/import/persistence/i18n). No React
+    // component tests for MVP (UI validated visually) — UI dirs create no *.test.ts.
+    include: ['src/**/*.test.ts'],
   },
 })

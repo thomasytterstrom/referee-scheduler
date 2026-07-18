@@ -1,0 +1,144 @@
+{
+  "common": {
+    "appName": "Referee Scheduler",
+    "generate": "Generate",
+    "reshuffle": "Reshuffle",
+    "import": "Import",
+    "export": "Export",
+    "print": "Print",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "save": "Save",
+    "delete": "Delete",
+    "close": "Close",
+    "day": "Day {day}",
+    "round": "round {round}",
+    "gender": { "w": "W", "m": "M" },
+    "role": { "head": "Head", "assistant": "Assistant" }
+  },
+  "wizard": {
+    "step": {
+      "setup": "Setup",
+      "import": "Import",
+      "generate": "Generate",
+      "review": "Review",
+      "export": "Export"
+    },
+    "setup": {
+      "title": "Setup",
+      "referees": "Referees",
+      "courts": "Courts",
+      "refsPerMatch": "Referees per match",
+      "availability": "Availability",
+      "addReferee": "Add referee",
+      "addCourt": "Add court",
+      "refereeName": "Referee name",
+      "courtName": "Court name"
+    },
+    "import": {
+      "title": "Import",
+      "instructions": "Paste or upload a TSV or CSV match export.",
+      "paste": "Paste data",
+      "upload": "Upload file",
+      "rowsImported": "Imported {count} matches.",
+      "rowsSkipped": "Skipped {count} rows.",
+      "rowError": "Row {row}: {message}"
+    },
+    "generate": {
+      "title": "Generate schedule",
+      "run": "Generate",
+      "reshuffle": "Reshuffle",
+      "inProgress": "Generating…",
+      "cancel": "Cancel",
+      "elapsed": "{seconds}s elapsed",
+      "bentBanner": "Generated with some fairness rules bent — see warnings."
+    },
+    "export": {
+      "title": "Export",
+      "downloadJson": "Download JSON",
+      "importJson": "Load JSON",
+      "print": "Print"
+    }
+  },
+  "grid": {
+    "toggle": { "overview": "Overview", "grid": "Grid" },
+    "header": { "round": "Round", "court": "Court" },
+    "matchLabel": "Match {match}",
+    "noAssistant": "—",
+    "empty": "No match",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinned": "Pinned",
+    "override": "Choose referee",
+    "noReferee": "—"
+  },
+  "warnings": {
+    "header": {
+      "clean": "No issues — every referee is balanced and rested.",
+      "cleanSub": "Rest, balance, and pairing all within targets.",
+      "yellowOnly": "Schedule looks good — a few minor fairness notes.",
+      "amber": "Some issues worth a look.",
+      "blocker": "Solve blocked — fix this before generating."
+    },
+    "run": {
+      "budget": "Generating stopped at the time limit — result may not be optimal. Generate again to keep improving.",
+      "cancelled": "You stopped generating early — showing the best result so far. Generate again to continue."
+    },
+    "blocker": {
+      "tooManyDuties": "Too many duties for the referees available at {time} — needs {demand}, have {available}. Add a referee or availability there."
+    },
+    "hint": {
+      "generic": "Reshuffle or override to improve.",
+      "forcedRest": "Not enough referees at {t1}–{t2} — add availability or a referee there."
+    },
+    "rest": {
+      "headline": "Rest rule bent — {n} referee(s) working too long without a break",
+      "instance": "{ref}: {s} duties in a row, {t1}–{t2}"
+    },
+    "headBalance": {
+      "headline": "Head duties uneven — {n} referee(s) off target",
+      "over": "{ref}: {k} Head duties over target",
+      "under": "{ref}: {k} Head duties under target"
+    },
+    "asstBalance": {
+      "headline": "Assistant duties uneven — {n} referee(s) off target",
+      "over": "{ref}: {k} Assistant duties over target",
+      "under": "{ref}: {k} Assistant duties under target"
+    },
+    "minor": {
+      "collapsed": "Minor fairness notes ({n})",
+      "gender": "{ref}: uneven gender mix in {role} duties",
+      "pair": "{refA} → {refB} paired {count}×, above the usual {cap}",
+      "sits": "{ref}: {k} rounds resting in a row, {t1}–{t2}",
+      "backToBack": "{ref}: Head at {t1} then Head at {t2} — could alternate"
+    }
+  },
+  "print": {
+    "artifact": {
+      "wallGrid": "Master wall grid",
+      "dutySlips": "Referee duty slips",
+      "callSheets": "Court call sheets"
+    },
+    "header": {
+      "allCourts": "Day {day} — all courts",
+      "dutySlips": "Day {day} — referee duty slips",
+      "callSheet": "Day {day} — {court}",
+      "generatedAt": "Generated {timestamp}"
+    },
+    "slip": {
+      "title": "Your duties today",
+      "dutyCount": "{count} duties"
+    },
+    "roundLabel": "R{round}",
+    "col": {
+      "time": "Time",
+      "court": "Court",
+      "match": "Match",
+      "class": "Class",
+      "role": "Role",
+      "head": "Head",
+      "assistant": "Assistant"
+    }
+  }
+}
