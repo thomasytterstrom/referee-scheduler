@@ -67,7 +67,12 @@ export function Wizard({ onExit }: WizardProps) {
           {step === "setup" && <SetupStep />}
           {step === "import" && <ImportStep />}
           {step === "generate" && <GenerateStep onGenerate={solve.start} />}
-          {step === "review" && <ReviewStep bent={solve.lastRun?.bent ?? false} />}
+          {step === "review" && (
+            <ReviewStep
+              bent={solve.lastRun?.bent ?? false}
+              runReason={solve.lastRun?.reason ?? null}
+            />
+          )}
           {step === "export" && <ExportStep />}
         </section>
       </main>

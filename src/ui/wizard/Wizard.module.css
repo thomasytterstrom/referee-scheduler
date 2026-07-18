@@ -324,3 +324,23 @@
   font-weight: 500;
   font-size: 0.9rem;
 }
+
+/* --- Export: courtside print artifacts -------------------------------------- */
+
+.printSection {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.printSubtitle {
+  margin-bottom: 0.75rem;
+  color: #6b7280;
+}
+
+.printButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}

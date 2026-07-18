@@ -1,0 +1,21 @@
+/* Print isolation for the Export step: window.print() must emit ONLY the previewed artifact, not the
+   wizard chrome (stepper, top bar, buttons). The artifact stays in place on screen; under @media print
+   everything is hidden except the .print-area subtree, lifted to the page origin so the artifact's own
+   @page orientation (print.css) governs the sheet. */
+
+@media print {
+  body {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    text-align: left;
+  }
+}
