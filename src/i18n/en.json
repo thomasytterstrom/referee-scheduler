@@ -91,6 +91,8 @@
     },
     "picker": {
       "new": "New tournament",
+      "import": "Import JSON",
+      "importError": "Couldn't import that file: {error}",
       "empty": "No saved tournaments yet.",
       "updated": "Updated {date}",
       "defaultName": "Untitled tournament",

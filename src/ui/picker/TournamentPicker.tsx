@@ -2,8 +2,8 @@
 // open / delete, plus "New tournament". A new tournament is persisted immediately so it appears in the
 // library and reload works.
 
-import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Upload } from "lucide-react";
 import type { Tournament } from "../../model/tournament.ts";
 import type { TournamentMeta } from "../../persistence/db.ts";
 import {
@@ -12,6 +12,7 @@ import {
   loadTournament,
   saveTournament,
 } from "../../persistence/db.ts";
+import { deserialize } from "../../persistence/serialize.ts";
 import { t } from "../../i18n/t.ts";
 import { Button } from "@/ui/shadcn/ui/button";
 import { Card } from "@/ui/shadcn/ui/card";
@@ -28,6 +29,8 @@ const newId = (): string => `tourn-${crypto.randomUUID()}`;
 
 export function TournamentPicker({ onOpen }: { onOpen: (a: Active) => void | Promise<void> }) {
   const [list, setList] = useState<TournamentMeta[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = () =>
     listTournaments().then((l) =>
@@ -41,6 +44,25 @@ export function TournamentPicker({ onOpen }: { onOpen: (a: Active) => void | Pro
     const rec: Active = { id: newId(), name: t("wizard.picker.defaultName"), tournament: emptyTournament() };
     await saveTournament(rec);
     await onOpen(rec);
+  };
+
+  // Load an exported JSON envelope as a brand-new library entry. The envelope carries no id/name, so
+  // mint a fresh id and recover the name from the export filename (`<name>_<date>.json`).
+  const importFile = async (file: File) => {
+    try {
+      setImportError(null);
+      const tournament = deserialize(JSON.parse(await file.text()));
+      const name =
+        file.name
+          .replace(/\.json$/i, "")
+          .replace(/_\d{4}-\d{2}-\d{2}$/, "")
+          .trim() || t("wizard.picker.defaultName");
+      const rec: Active = { id: newId(), name, tournament };
+      await saveTournament(rec);
+      await onOpen(rec);
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const open = async (id: string) => {
@@ -71,10 +93,37 @@ export function TournamentPicker({ onOpen }: { onOpen: (a: Active) => void | Pro
           <p className="max-w-xl text-lg text-primary-foreground/90">
             {t("wizard.picker.tagline")}
           </p>
-          <Button size="lg" onClick={create} className="bg-sand text-sand-foreground hover:bg-sand/90">
-            <Plus className="size-4" />
-            {t("wizard.picker.new")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="lg" onClick={create} className="bg-sand text-sand-foreground hover:bg-sand/90">
+              <Plus className="size-4" />
+              {t("wizard.picker.new")}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+            >
+              <Upload className="size-4" />
+              {t("wizard.picker.import")}
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void importFile(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
+          {importError && (
+            <p className="text-sm text-primary-foreground/90">
+              {t("wizard.picker.importError", { error: importError })}
+            </p>
+          )}
         </div>
       </section>
 
