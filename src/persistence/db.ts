@@ -8,7 +8,7 @@
 
 import { openDB } from "idb";
 import type { DBSchema, IDBPDatabase } from "idb";
-import type { Tournament } from "../model/tournament.ts";
+import type { Referee, Tournament } from "../model/tournament.ts";
 
 // Envelope fields duplicated out of the record for cheap listing.
 export interface TournamentMeta {
@@ -25,10 +25,14 @@ export interface StoredTournament extends TournamentMeta {
 interface SchedulerDB extends DBSchema {
   tournaments: { key: string; value: StoredTournament };
   meta: { key: string; value: string };
+  // App-level referee directory (roster book), keyed by referee id; shared across tournaments and
+  // excluded from tournament JSON export (referee-directory-spec.md).
+  referees: { key: string; value: Referee };
 }
 
 const DB_NAME = "referee-scheduler";
-const DB_VERSION = 1;
+// v2 adds the `referees` store; the guarded creates make upgrade idempotent for fresh + existing DBs.
+const DB_VERSION = 2;
 const LAST_OPENED = "lastOpenedId";
 
 let dbPromise: Promise<IDBPDatabase<SchedulerDB>> | undefined;
@@ -39,6 +43,8 @@ function db(): Promise<IDBPDatabase<SchedulerDB>> {
       if (!d.objectStoreNames.contains("tournaments"))
         d.createObjectStore("tournaments", { keyPath: "id" });
       if (!d.objectStoreNames.contains("meta")) d.createObjectStore("meta");
+      if (!d.objectStoreNames.contains("referees"))
+        d.createObjectStore("referees", { keyPath: "id" });
     },
   }));
 }
@@ -64,6 +70,20 @@ export async function listTournaments(): Promise<TournamentMeta[]> {
 
 export async function deleteTournament(id: string): Promise<void> {
   await (await db()).delete("tournaments", id);
+}
+
+// --- Referee directory (app-level roster book; unique names live in the pure model/directory core) ---
+
+export async function loadDirectory(): Promise<Referee[]> {
+  return (await db()).getAll("referees");
+}
+
+export async function putReferee(ref: Referee): Promise<void> {
+  await (await db()).put("referees", ref);
+}
+
+export async function deleteReferee(id: string): Promise<void> {
+  await (await db()).delete("referees", id);
 }
 
 export async function getLastOpenedId(): Promise<string | undefined> {
