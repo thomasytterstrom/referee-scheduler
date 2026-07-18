@@ -7,21 +7,21 @@ import type { Referee } from "../../model/tournament.ts";
 import { sortByName } from "../../model/directory.ts";
 import { useDirectory } from "../state/directory.tsx";
 import { t } from "../../i18n/t.ts";
-import { Button } from "../components/Button.tsx";
-import styles from "./TournamentPicker.module.css";
+import { Button } from "@/ui/shadcn/ui/button";
+import { Input } from "@/ui/shadcn/ui/input";
 
 export function RefereeLibrary() {
   const dir = useDirectory();
   const entries = sortByName(dir.library);
 
   return (
-    <section className={styles.library}>
-      <h2 className={styles.libraryTitle}>{t("library.title")}</h2>
-      <p className={styles.librarySub}>{t("library.subtitle")}</p>
+    <section className="mx-auto max-w-3xl px-6 pb-16">
+      <h2 className="text-lg font-semibold">{t("library.title")}</h2>
+      <p className="mt-1 mb-4 text-sm text-muted-foreground">{t("library.subtitle")}</p>
       {entries.length === 0 ? (
-        <p className={styles.empty}>{t("library.empty")}</p>
+        <p className="text-muted-foreground italic">{t("library.empty")}</p>
       ) : (
-        <ul className={styles.list}>
+        <ul className="flex flex-col gap-2">
           {entries.map((r) => (
             <LibraryRow key={r.id} entry={r} />
           ))}
@@ -57,17 +57,17 @@ function LibraryRow({ entry }: { entry: Referee }) {
   };
 
   return (
-    <li className={styles.row}>
-      <input
-        className={styles.libraryInput}
+    <li className="flex items-center gap-2">
+      <Input
         value={draft}
         aria-label={t("library.rename")}
+        aria-invalid={error ? true : undefined}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
       />
-      {error && <span className={styles.libraryError}>{error}</span>}
-      <Button variant="danger" onClick={remove}>
+      {error && <span className="text-xs text-destructive">{error}</span>}
+      <Button variant="destructive" onClick={remove}>
         {t("common.delete")}
       </Button>
     </li>

@@ -2,7 +2,6 @@
 // to read it (ArrayBuffer for .xlsx, text otherwise).
 
 import { useRef, useState } from "react";
-import styles from "./components.module.css";
 
 export function FileDrop({
   accept,
@@ -19,7 +18,11 @@ export function FileDrop({
 
   return (
     <div
-      className={over ? `${styles.drop} ${styles.dropOver}` : styles.drop}
+      className={`flex min-h-24 cursor-pointer items-center justify-center rounded-md border-2 border-dashed p-4 text-center text-sm ${
+        over
+          ? "border-primary bg-accent text-primary"
+          : "border-input bg-muted text-muted-foreground hover:border-primary hover:bg-accent hover:text-primary"
+      }`}
       role="button"
       tabIndex={0}
       onClick={pick}

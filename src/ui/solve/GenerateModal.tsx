@@ -7,10 +7,17 @@
 // Presentational only — all logic lives in solveController. Idle renders nothing.
 
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { t } from "../../i18n/t.ts";
-import { Button } from "../components/Button.tsx";
+import { Button } from "@/ui/shadcn/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/ui/shadcn/ui/dialog";
 import type { PrecheckFailure, SolveState, Ticker } from "./solveController.ts";
-import styles from "./GenerateModal.module.css";
 
 export interface GenerateModalProps {
   state: SolveState;
@@ -22,18 +29,26 @@ export interface GenerateModalProps {
 const ZERO: Ticker = { bestScore: Infinity, iters: 0, elapsedMs: 0 };
 
 export function GenerateModal({ state, onCancel, onClose, subscribeTicker }: GenerateModalProps) {
-  if (state.phase === "idle") return null;
+  const solving = state.phase === "solving";
+
+  // Blocking: no Esc / outside-click / X dismissal — the organizer must Cancel or Close & fix.
+  const block = (e: Event) => e.preventDefault();
 
   return (
-    <div className={styles.scrim} role="dialog" aria-modal="true" aria-label={t("wizard.generate.title")}>
-      <div className={styles.card}>
-        {state.phase === "solving" ? (
+    <Dialog open={state.phase !== "idle"} onOpenChange={() => {}}>
+      <DialogContent
+        showCloseButton={false}
+        onEscapeKeyDown={block}
+        onInteractOutside={block}
+        className="items-center text-center sm:max-w-md"
+      >
+        {solving ? (
           <Solving onCancel={onCancel} subscribeTicker={subscribeTicker} />
         ) : (
-          <ErrorState failures={state.failures} onClose={onClose} />
+          <ErrorState failures={state.phase === "error" ? state.failures : []} onClose={onClose} />
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -53,35 +68,44 @@ function Solving({
 
   return (
     <>
-      <div className={styles.spinner} aria-hidden="true" />
-      <h2 className={styles.title}>{t("wizard.generate.inProgress")}</h2>
-      <dl className={styles.ticker}>
-        <div className={styles.stat}>
-          <dt>{t("wizard.generate.stat.score")}</dt>
-          <dd>{score}</dd>
-        </div>
-        <div className={styles.stat}>
-          <dt>{t("wizard.generate.stat.iters")}</dt>
-          <dd>{tick.iters.toLocaleString()}</dd>
-        </div>
-        <div className={styles.stat}>
-          <dt>{t("wizard.generate.stat.elapsed")}</dt>
-          <dd>{elapsed}</dd>
-        </div>
+      <DialogHeader className="items-center">
+        <Loader2 className="size-10 animate-spin text-primary motion-reduce:[animation-duration:2s]" aria-hidden />
+        <DialogTitle>{t("wizard.generate.inProgress")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("wizard.generate.subtitle")}</DialogDescription>
+      </DialogHeader>
+      <dl className="flex gap-5">
+        <Stat label={t("wizard.generate.stat.score")} value={score} />
+        <Stat label={t("wizard.generate.stat.iters")} value={tick.iters.toLocaleString()} />
+        <Stat label={t("wizard.generate.stat.elapsed")} value={elapsed} />
       </dl>
-      <Button variant="default" onClick={onCancel}>
+      <Button variant="outline" onClick={onCancel}>
         {t("wizard.generate.cancel")}
       </Button>
     </>
   );
 }
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-16 flex-col gap-0.5">
+      <dt className="text-xs tracking-wide text-muted-foreground uppercase">{label}</dt>
+      <dd className="text-lg font-bold tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
 function ErrorState({ failures, onClose }: { failures: PrecheckFailure[]; onClose: () => void }) {
   return (
     <>
-      <h2 className={`${styles.title} ${styles.errorTitle}`}>{t("wizard.generate.blockedTitle")}</h2>
-      <div className={styles.errorBanner} role="alert">
-        <ul className={styles.failList}>
+      <DialogHeader className="items-center">
+        <DialogTitle className="text-destructive">{t("wizard.generate.blockedTitle")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("wizard.generate.blockedTitle")}</DialogDescription>
+      </DialogHeader>
+      <div
+        className="w-full rounded-md border border-destructive/30 bg-destructive/10 p-3 text-left text-sm text-destructive"
+        role="alert"
+      >
+        <ul className="flex list-disc flex-col gap-1.5 pl-5">
           {failures.map((f, i) => (
             <li key={i}>
               {t("warnings.blocker.tooManyDuties", {
@@ -93,9 +117,7 @@ function ErrorState({ failures, onClose }: { failures: PrecheckFailure[]; onClos
           ))}
         </ul>
       </div>
-      <Button variant="primary" onClick={onClose}>
-        {t("wizard.generate.closeFix")}
-      </Button>
+      <Button onClick={onClose}>{t("wizard.generate.closeFix")}</Button>
     </>
   );
 }

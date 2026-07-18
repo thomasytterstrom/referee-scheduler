@@ -3,6 +3,7 @@
 // library and reload works.
 
 import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import type { Tournament } from "../../model/tournament.ts";
 import type { TournamentMeta } from "../../persistence/db.ts";
 import {
@@ -12,8 +13,9 @@ import {
   saveTournament,
 } from "../../persistence/db.ts";
 import { t } from "../../i18n/t.ts";
-import { Button } from "../components/Button.tsx";
-import styles from "./TournamentPicker.module.css";
+import { Button } from "@/ui/shadcn/ui/button";
+import { Card } from "@/ui/shadcn/ui/card";
+import bannerImg from "../../assets/beach-banner.png";
 
 export interface Active {
   id: string;
@@ -52,31 +54,64 @@ export function TournamentPicker({ onOpen }: { onOpen: (a: Active) => void | Pro
   };
 
   return (
-    <div className={styles.picker}>
-      <h1 className={styles.title}>{t("common.appName")}</h1>
-      <Button variant="primary" className={styles.newBtn} onClick={create}>
-        {t("wizard.picker.new")}
-      </Button>
+    <div>
+      {/* Hero banner — SBT montage with an ocean-blue gradient wash and the app title overlaid. */}
+      <section className="relative isolate flex min-h-[420px] flex-col justify-center overflow-hidden lg:min-h-[520px]">
+        <img
+          src={bannerImg}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/60 via-primary/40 to-primary/60" />
+        <div className="relative mx-auto flex max-w-3xl flex-col items-start gap-5 px-6 py-20 text-primary-foreground sm:py-28">
+          <h1 className="text-4xl font-semibold tracking-tight drop-shadow-sm sm:text-5xl">
+            {t("common.appName")}
+          </h1>
+          <p className="max-w-xl text-lg text-primary-foreground/90">
+            {t("wizard.picker.tagline")}
+          </p>
+          <Button size="lg" onClick={create} className="bg-sand text-sand-foreground hover:bg-sand/90">
+            <Plus className="size-4" />
+            {t("wizard.picker.new")}
+          </Button>
+        </div>
+      </section>
 
-      {list.length === 0 ? (
-        <p className={styles.empty}>{t("wizard.picker.empty")}</p>
-      ) : (
-        <ul className={styles.list}>
-          {list.map((m) => (
-            <li key={m.id} className={styles.row}>
-              <button type="button" className={styles.openBtn} onClick={() => open(m.id)}>
-                <span className={styles.name}>{m.name}</span>
-                <span className={styles.date}>
-                  {t("wizard.picker.updated", { date: new Date(m.updatedAt).toLocaleString() })}
-                </span>
-              </button>
-              <Button variant="danger" onClick={() => remove(m.id)}>
-                {t("common.delete")}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <main className="mx-auto max-w-3xl px-6 py-10">
+        <h2 className="mb-4 text-lg font-semibold">{t("wizard.picker.yourTournaments")}</h2>
+        {list.length === 0 ? (
+          <p className="text-muted-foreground italic">{t("wizard.picker.empty")}</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {list.map((m) => (
+              <li key={m.id}>
+                <Card className="flex-row items-center gap-3 p-2 transition-colors hover:border-primary">
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    onClick={() => open(m.id)}
+                  >
+                    <span className="truncate font-semibold">{m.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t("wizard.picker.updated", { date: new Date(m.updatedAt).toLocaleString() })}
+                    </span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("common.delete")}
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => remove(m.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
     </div>
   );
 }

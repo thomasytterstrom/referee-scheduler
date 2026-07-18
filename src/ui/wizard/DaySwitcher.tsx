@@ -3,28 +3,40 @@
 
 import { useStore } from "../state/store.tsx";
 import { t } from "../../i18n/t.ts";
-import styles from "./Wizard.module.css";
 
 export function DaySwitcher() {
   const store = useStore();
   const days = store.tournament.days;
   if (days.length === 0) return null;
-  if (days.length === 1) return <span className={styles.dayLabel}>{t("common.day", { day: 1 })}</span>;
+  if (days.length === 1)
+    return <span className="font-semibold text-muted-foreground">{t("common.day", { day: 1 })}</span>;
 
   return (
-    <div className={styles.daySwitcher} role="tablist" aria-label={t("wizard.step.setup")}>
-      {days.map((_, i) => (
-        <button
-          key={i}
-          type="button"
-          role="tab"
-          aria-selected={store.dayIndex === i}
-          className={store.dayIndex === i ? `${styles.dayTab} ${styles.dayTabActive}` : styles.dayTab}
-          onClick={() => store.setDayIndex(i)}
-        >
-          {t("common.day", { day: i + 1 })}
-        </button>
-      ))}
+    <div
+      className="inline-flex shrink-0 gap-1 rounded-lg bg-muted p-0.5"
+      role="tablist"
+      aria-label={t("wizard.step.setup")}
+    >
+      {days.map((_, i) => {
+        const active = store.dayIndex === i;
+        return (
+          <button
+            key={i}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            className={
+              "rounded-md px-3 py-1.5 font-medium transition-colors " +
+              (active
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground")
+            }
+            onClick={() => store.setDayIndex(i)}
+          >
+            {t("common.day", { day: i + 1 })}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -4,7 +4,7 @@
 .root {
   overflow-x: auto;
   font: 13px/1.4 system-ui, sans-serif;
-  color: #1f2430;
+  color: var(--foreground);
 }
 
 .row {
@@ -12,16 +12,16 @@
   align-items: stretch;
   gap: 8px;
   min-width: min-content;
-  border-bottom: 1px solid #eceef2;
+  border-bottom: 1px solid var(--border);
 }
 
 .headerRow {
   position: sticky;
   top: 0;
-  background: #fff;
-  border-bottom: 1px solid #d7dbe3;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
   font-weight: 600;
-  color: #566;
+  color: var(--muted-foreground);
 }
 
 .name {
@@ -52,7 +52,7 @@
   flex: 0 0 26px;
   text-align: center;
   font-size: 11px;
-  color: #889;
+  color: var(--muted-foreground);
 }
 
 .cell {
@@ -63,13 +63,13 @@
   justify-content: center;
   border-radius: 4px;
   font-weight: 700;
-  color: #fff;
+  color: var(--ref-cell-foreground);
 }
 
 .head,
 .assistant {
   /* background is applied inline (the ref color); assistant reads faded to tell the duties apart */
-  color: #fff;
+  color: var(--ref-cell-foreground);
 }
 
 .assistant {
@@ -77,13 +77,19 @@
 }
 
 .sit {
-  background: #f1f3f7;
-  color: #aab;
+  background: var(--muted);
+  color: var(--muted-foreground);
   font-weight: 400;
 }
 
 .unavailable {
-  background: repeating-linear-gradient(45deg, #f6f7f9, #f6f7f9 3px, #eceef2 3px, #eceef2 6px);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--unavailable-hatch-a),
+    var(--unavailable-hatch-a) 3px,
+    var(--unavailable-hatch-b) 3px,
+    var(--unavailable-hatch-b) 6px
+  );
 }
 
 .fairness {
@@ -111,7 +117,7 @@
   position: relative;
   flex: 1;
   height: 10px;
-  background: #f1f3f7;
+  background: var(--muted);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -127,18 +133,18 @@
   top: -2px;
   bottom: -2px;
   width: 2px;
-  background: #1f2430;
+  background: var(--foreground);
   transform: translateX(-1px);
 }
 
 .load {
   flex: 0 0 48px;
   font-size: 11px;
-  color: #667;
+  color: var(--muted-foreground);
   text-align: right;
 }
 
 .empty {
   padding: 16px 4px;
-  color: #889;
+  color: var(--muted-foreground);
 }
