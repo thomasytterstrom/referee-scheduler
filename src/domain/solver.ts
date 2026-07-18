@@ -57,6 +57,24 @@ export function greedy(p: Problem, carry: Carry, rng: Rng, pins?: Sol): Sol {
   return s;
 }
 
+// Extract only the locked slots as a fresh seed. For Reshuffle: greedy keeps these and re-fills
+// every other slot from scratch. (Passing the full schedule would freeze it — greedy skips any
+// slot already filled, so unpinned slots must be cleared to -1 to be reassigned.)
+export function pinsOnly(s: Sol): Sol {
+  const out = emptySol(s.head.length);
+  for (let m = 0; m < s.head.length; m++) {
+    if (s.headPin[m]) {
+      out.head[m] = s.head[m];
+      out.headPin[m] = 1;
+    }
+    if (s.asstPin[m]) {
+      out.asst[m] = s.asst[m];
+      out.asstPin[m] = 1;
+    }
+  }
+  return out;
+}
+
 function leastLoaded(p: Problem, rng: Rng, load: Float64Array, used: Set<number>, rd: number, ban: number): number {
   let best = -1;
   let bestLoad = Infinity;
@@ -78,12 +96,22 @@ function leastLoaded(p: Problem, rng: Rng, load: Float64Array, used: Set<number>
 
 // ---- Simulated annealing ---------------------------------------------------
 
+export interface Progress {
+  elapsedMs: number;
+  bestScore: number;
+  iters: number;
+}
+
 export interface SolveOpts {
   budgetMs: number;
   seed: number;
   warmStart?: Sol; // incremental re-solve: anneal from here (low T0) instead of a fresh greedy seed
+  pins?: Sol; // fresh (Reshuffle) seed with locked slots pre-filled; frozen through the anneal
   t0?: number;
   tEnd?: number;
+  onProgress?: (p: Progress) => void; // periodic tick (worker → main); cadence = progressMs
+  progressMs?: number; // min ms between onProgress ticks (default 120)
+  shouldCancel?: () => boolean; // checked between iteration batches; true → stop, keep best-so-far
 }
 
 export interface SolveResult {
@@ -92,26 +120,40 @@ export interface SolveResult {
   iters: number;
   accepts: number;
   ms: number;
+  reason: "budget" | "cancelled"; // why the loop ended (worker's Done.reason)
 }
 
 export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
   const rng = makeRng(opts.seed);
   const warm = opts.warmStart !== undefined;
-  const cur = warm ? cloneSol(opts.warmStart!) : greedy(p, carry, rng);
+  const cur = warm ? cloneSol(opts.warmStart!) : greedy(p, carry, rng, opts.pins);
   let curScore = scoreDay(p, cur, carry).total;
   let best = cloneSol(cur);
   let bestScore = curScore;
 
   const t0 = opts.t0 ?? (warm ? 400 : 4000);
   const tEnd = opts.tEnd ?? 0.5;
+  const progressMs = opts.progressMs ?? 120;
   const start = Date.now();
   let iters = 0;
   let accepts = 0;
+  let lastProgress = 0;
+  let reason: "budget" | "cancelled" = "budget";
 
   // Geometric cool re-derived from elapsed fraction so it tracks the wall-clock budget.
   while (true) {
     const elapsed = Date.now() - start;
     if (elapsed >= opts.budgetMs) break;
+    // Cooperative cancel — checked between batches, returns best-so-far (never "no solution").
+    if (opts.shouldCancel && opts.shouldCancel()) {
+      reason = "cancelled";
+      break;
+    }
+    // Progress tick on a time gate, not per-iteration (keeps the UI from thrashing).
+    if (opts.onProgress && elapsed - lastProgress >= progressMs) {
+      opts.onProgress({ elapsedMs: elapsed, bestScore, iters });
+      lastProgress = elapsed;
+    }
     const frac = elapsed / opts.budgetMs;
     const T = t0 * Math.pow(tEnd / t0, frac);
 
@@ -134,7 +176,7 @@ export function solve(p: Problem, carry: Carry, opts: SolveOpts): SolveResult {
     }
   }
 
-  return { sol: best, score: bestScore, iters, accepts, ms: Date.now() - start };
+  return { sol: best, score: bestScore, iters, accepts, ms: Date.now() - start, reason };
 }
 
 // ---- Neighborhood moves (each preserves all hard constraints) --------------
