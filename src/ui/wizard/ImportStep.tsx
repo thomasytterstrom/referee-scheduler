@@ -7,10 +7,10 @@ import { useStore } from "../state/store.tsx";
 import type { MergeResult } from "../../import/fixtures.ts";
 import type { ImportInput } from "../../import/fixtures.ts";
 import { t } from "../../i18n/t.ts";
-import { Button } from "../components/Button.tsx";
+import { Button } from "@/ui/shadcn/ui/button";
+import { Textarea } from "@/ui/shadcn/ui/textarea";
 import { FileDrop } from "../components/FileDrop.tsx";
 import { StepHeader } from "../components/StepHeader.tsx";
-import styles from "./Wizard.module.css";
 
 function countMatches(result: MergeResult): number {
   return result.tournament.days.reduce(
@@ -41,31 +41,31 @@ export function ImportStep() {
   };
 
   return (
-    <div className={styles.step}>
+    <div className="max-w-[760px]">
       <StepHeader title={t("wizard.import.title")} subtitle={t("wizard.import.instructions")} />
 
       <FileDrop accept=".xlsx,.csv,.tsv" label={t("wizard.import.upload")} onFile={onFile} />
 
-      <textarea
-        className={styles.paste}
+      <Textarea
+        className="my-3 resize-y font-mono text-sm"
         rows={6}
         value={text}
         placeholder={t("wizard.import.paste")}
         onChange={(e) => setText(e.target.value)}
       />
-      <div className={styles.addRow}>
-        <Button variant="primary" disabled={!text.trim()} onClick={() => run(text)}>
+      <div className="flex gap-1.5">
+        <Button disabled={!text.trim()} onClick={() => run(text)}>
           {t("common.import")}
         </Button>
       </div>
 
-      {error && <p className={styles.error}>{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {result && (
-        <div className={styles.importSummary}>
-          <p className={styles.summaryLine}>
+        <div className="mt-4 flex flex-col gap-2">
+          <p className="font-semibold">
             {t("wizard.import.rowsImported", { count: countMatches(result) })}{" "}
-            <span className={styles.muted}>
+            <span className="font-normal text-muted-foreground">
               {t("wizard.import.added", { count: result.added.length })} ·{" "}
               {t("wizard.import.moved", { count: result.moved.length })} ·{" "}
               {t("wizard.import.removed", { count: result.removed.length })}
@@ -74,7 +74,7 @@ export function ImportStep() {
           {result.warnings.length > 0 && (
             <details>
               <summary>{t("wizard.import.warningsHeading")} ({result.warnings.length})</summary>
-              <ul className={styles.msgList}>
+              <ul className="mt-1 pl-5 text-muted-foreground">
                 {result.warnings.map((w, i) => (
                   <li key={i}>{w}</li>
                 ))}
@@ -83,10 +83,10 @@ export function ImportStep() {
           )}
           {result.errors.length > 0 && (
             <details open>
-              <summary className={styles.error}>
+              <summary className="text-destructive">
                 {t("wizard.import.errorsHeading")} ({result.errors.length})
               </summary>
-              <ul className={styles.msgList}>
+              <ul className="mt-1 pl-5 text-muted-foreground">
                 {result.errors.map((er, i) => (
                   <li key={i}>{er}</li>
                 ))}

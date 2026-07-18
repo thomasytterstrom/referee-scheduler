@@ -9,10 +9,9 @@ import { useStore } from "../state/store.tsx";
 import { serialize } from "../../persistence/serialize.ts";
 import { saveTournament, setLastOpenedId } from "../../persistence/db.ts";
 import { t } from "../../i18n/t.ts";
-import { Button } from "../components/Button.tsx";
+import { Button } from "@/ui/shadcn/ui/button";
 import { StepHeader } from "../components/StepHeader.tsx";
 import { WallGrid, DutySlips, CallSheets } from "../print/index.ts";
-import styles from "./Wizard.module.css";
 import "./exportPrint.css";
 
 type Artifact = "wallGrid" | "dutySlips" | "callSheets";
@@ -68,24 +67,24 @@ export function ExportStep() {
   };
 
   return (
-    <div className={styles.step}>
+    <div className="max-w-[760px]">
       <StepHeader title={t("wizard.export.title")} subtitle={t("wizard.export.subtitle")} />
-      <div className={styles.generateActions}>
-        <Button variant="primary" onClick={download}>
+      <div className="mb-3 flex gap-2.5">
+        <Button onClick={download}>
           {t("wizard.export.downloadJson")}
         </Button>
-        <Button onClick={save}>{t("wizard.export.saveLibrary")}</Button>
+        <Button variant="outline" onClick={save}>{t("wizard.export.saveLibrary")}</Button>
       </div>
-      {saved && <p className={styles.note}>{t("wizard.export.saved")}</p>}
+      {saved && <p className="text-muted-foreground italic">{t("wizard.export.saved")}</p>}
 
-      <div className={styles.printSection}>
-        <h3 className={styles.sectionTitle}>{t("wizard.export.print")}</h3>
-        <p className={styles.printSubtitle}>{t("wizard.export.printSubtitle")}</p>
+      <div className="mt-6 border-t pt-5">
+        <h3 className="mb-2 text-sm text-muted-foreground">{t("wizard.export.print")}</h3>
+        <p className="mb-3 text-muted-foreground">{t("wizard.export.printSubtitle")}</p>
         {day ? (
           <>
-            <div className={styles.printButtons}>
+            <div className="mb-4 flex flex-wrap gap-2.5">
               {ARTIFACTS.map((a) => (
-                <Button key={a} onClick={() => printArtifact(a)}>
+                <Button key={a} variant="outline" onClick={() => printArtifact(a)}>
                   {t("wizard.export.printArtifact", { artifact: t(`print.artifact.${a}`) })}
                 </Button>
               ))}
@@ -97,7 +96,7 @@ export function ExportStep() {
             </div>
           </>
         ) : (
-          <p className={styles.emptyHint}>{t("wizard.export.noDay")}</p>
+          <p className="text-muted-foreground italic">{t("wizard.export.noDay")}</p>
         )}
       </div>
     </div>

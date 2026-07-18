@@ -94,7 +94,9 @@
       "empty": "No saved tournaments yet.",
       "updated": "Updated {date}",
       "defaultName": "Untitled tournament",
-      "switch": "Switch tournament"
+      "switch": "Switch tournament",
+      "tagline": "Fair referee schedules for every beach tournament.",
+      "yourTournaments": "Your tournaments"
     },
     "nameLabel": "Tournament name"
   },

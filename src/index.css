@@ -1,111 +1,118 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Light-only: the grid, print, and step-body layers are hardcoded light, so the app ships light
+   throughout. `dark` is class-gated and never toggled, so no OS-dark styling leaks in. */
+@custom-variant dark (&:is(.dark *));
+
+/* Brand palette sampled from the Swedish Beach Tour hero: ocean blue primary, sand-gold accent. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  color-scheme: light;
+  --radius: 0.625rem;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --background: oklch(0.99 0.005 240);
+  --foreground: oklch(0.22 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.02 250);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --primary: oklch(0.56 0.13 242);
+  --primary-foreground: oklch(0.99 0.005 240);
+  --secondary: oklch(0.96 0.01 240);
+  --secondary-foreground: oklch(0.3 0.03 245);
+  --muted: oklch(0.96 0.01 240);
+  --muted-foreground: oklch(0.52 0.02 245);
+  --accent: oklch(0.95 0.02 235);
+  --accent-foreground: oklch(0.3 0.03 245);
+  --destructive: oklch(0.58 0.22 27);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  --border: oklch(0.9 0.01 245);
+  --input: oklch(0.9 0.01 245);
+  --ring: oklch(0.56 0.13 242);
+
+  /* Sand-gold brand accent (volleyball splash) — for highlights, badges, hero flourishes. */
+  --sand: oklch(0.78 0.14 75);
+  --sand-foreground: oklch(0.28 0.05 70);
+
+  --chart-1: oklch(0.56 0.13 242);
+  --chart-2: oklch(0.78 0.14 75);
+  --chart-3: oklch(0.6 0.1 200);
+  --chart-4: oklch(0.5 0.12 260);
+  --chart-5: oklch(0.7 0.13 45);
+
+  /* Data-dense module palette — backs the CSS-Module views that have no shadcn primitive
+     (Grid, RefereeView, WarningsPanel). Consumed via plain var() in those modules. */
+  --gender-mens: oklch(0.546 0.215 262.9); /* #2563eb */
+  --gender-womens: oklch(0.592 0.218 0.6); /* #db2777 */
+  --pin-active: oklch(0.962 0.058 95.6); /* #fef3c7 */
+  --ref-cell-foreground: oklch(1 0 0); /* #fff */
+  --unavailable-hatch-a: oklch(0.976 0.003 264.5); /* #f6f7f9 */
+  --unavailable-hatch-b: oklch(0.949 0.006 264.5); /* #eceef2 */
+
+  --warn-critical: oklch(0.637 0.208 25.3); /* #ef4444 spine */
+  --warn-critical-bg: oklch(0.971 0.013 17.4); /* #fef2f2 */
+  --warn-critical-border: oklch(0.885 0.059 18.3); /* #fecaca */
+  --warn-critical-fg: oklch(0.444 0.161 26.9); /* #991b1b */
+  --warn-major: oklch(0.769 0.165 70.1); /* #f59e0b spine */
+  --warn-major-bg: oklch(0.98 0.016 73.7); /* #fff7ed */
+  --warn-major-border: oklch(0.901 0.073 70.7); /* #fed7aa */
+  --warn-major-fg: oklch(0.473 0.125 46.2); /* #92400e */
+  --warn-minor: oklch(0.795 0.162 86); /* #eab308 spine */
+  --warn-minor-bg: oklch(0.987 0.026 102.2); /* #fefce8 */
+  --warn-minor-border: oklch(0.945 0.124 101.5); /* #fef08a */
+  --warn-minor-fg: oklch(0.476 0.103 61.9); /* #854d0e */
+  --warn-clean-bg: oklch(0.982 0.018 155.8); /* #f0fdf4 */
+  --warn-clean-border: oklch(0.925 0.081 156); /* #bbf7d0 */
+  --warn-clean-fg: oklch(0.448 0.108 151.3); /* #166534 */
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sand: var(--sand);
+  --color-sand-foreground: var(--sand-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, Consolas, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }

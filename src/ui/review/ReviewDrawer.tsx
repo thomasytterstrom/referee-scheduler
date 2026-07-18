@@ -10,7 +10,6 @@ import { carryoverFor } from "../../model/carryover.ts";
 import { scoreDay } from "../../domain/score.ts";
 import { RefereeView, CumulativeFairness } from "../referee-view/RefereeView.tsx";
 import { WarningsPanel } from "../warnings/WarningsPanel.tsx";
-import styles from "./ReviewDrawer.module.css";
 
 export interface ReviewDrawerProps {
   tournament: Tournament;
@@ -24,12 +23,12 @@ export function ReviewDrawer({ tournament, dayIndex, runReason }: ReviewDrawerPr
   const breakdown = scoreDay(problem, sol, carryoverFor(tournament, dayIndex));
 
   return (
-    <section className={styles.drawer}>
-      <div className={styles.timeline}>
+    <section className="mt-5 flex flex-wrap gap-5 border-t pt-4">
+      <div className="min-w-0 flex-[1_1_420px]">
         <RefereeView tournament={tournament} dayIndex={dayIndex} />
         <CumulativeFairness tournament={tournament} dayIndex={dayIndex} />
       </div>
-      <div className={styles.warnings}>
+      <div className="min-w-[260px] flex-[0_1_320px]">
         <WarningsPanel
           tournament={tournament}
           dayIndex={dayIndex}
