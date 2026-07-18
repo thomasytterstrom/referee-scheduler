@@ -1,0 +1,223 @@
+/* Dense round x court grid for one day. Rows = rounds, cols = the day's selected courts.
+   Self-contained (no shared design system yet); tuned for readability + print. */
+
+.wrap {
+  overflow-x: auto;
+  font-size: 12px;
+  color: #1f2430;
+}
+
+.grid {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  min-width: 520px;
+}
+
+.corner,
+.courtHead,
+.roundHead {
+  background: #f3f4f6;
+  font-weight: 600;
+  border: 1px solid #d8dbe0;
+  padding: 4px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.corner,
+.roundHead {
+  width: 60px;
+}
+
+.courtHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.roundHead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
+}
+
+.cell {
+  border: 1px solid #e4e6eb;
+  padding: 3px;
+  vertical-align: top;
+}
+
+.idleCell {
+  background: #fafbfc;
+}
+
+.idle {
+  display: block;
+  text-align: center;
+  color: #b8bcc4;
+  padding: 8px 0;
+}
+
+.match {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-radius: 6px;
+  padding: 4px;
+  background: #fff;
+}
+
+.pinnedCell {
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+}
+
+.highlight {
+  box-shadow: inset 3px 0 0 #6366f1;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gender {
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.genderW {
+  background: #db2777;
+}
+
+.genderM {
+  background: #2563eb;
+}
+
+.matchNo {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.teams {
+  color: #374151;
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.role {
+  color: #6b7280;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  min-width: 26px;
+}
+
+.refName {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.pin {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 4px;
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.pin:hover:not(:disabled) {
+  opacity: 0.6;
+}
+
+.pinActive {
+  opacity: 1;
+  filter: none;
+  background: #fef3c7;
+}
+
+.pin:disabled {
+  cursor: default;
+}
+
+.override {
+  font: inherit;
+  font-size: 11px;
+  width: 32px;
+  min-width: 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.override:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.wrap[data-disabled="true"] .match {
+  opacity: 0.65;
+}
+
+@media print {
+  .wrap {
+    overflow: visible;
+  }
+
+  .pin,
+  .override {
+    display: none;
+  }
+
+  .gender,
+  .genderW,
+  .genderM,
+  .dot {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -1,0 +1,144 @@
+/* Self-contained styling for the read-only per-referee review. Rows share fixed column widths so
+   the round header aligns over every ref's timeline; the whole block scrolls horizontally as one. */
+
+.root {
+  overflow-x: auto;
+  font: 13px/1.4 system-ui, sans-serif;
+  color: #1f2430;
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: min-content;
+  border-bottom: 1px solid #eceef2;
+}
+
+.headerRow {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  border-bottom: 1px solid #d7dbe3;
+  font-weight: 600;
+  color: #566;
+}
+
+.name {
+  flex: 0 0 160px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.timeline {
+  display: flex;
+  gap: 3px;
+  padding: 4px 0;
+}
+
+.roundHead {
+  flex: 0 0 26px;
+  text-align: center;
+  font-size: 11px;
+  color: #889;
+}
+
+.cell {
+  flex: 0 0 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.head,
+.assistant {
+  /* background is applied inline (the ref color); assistant reads faded to tell the duties apart */
+  color: #fff;
+}
+
+.assistant {
+  opacity: 0.62;
+}
+
+.sit {
+  background: #f1f3f7;
+  color: #aab;
+  font-weight: 400;
+}
+
+.unavailable {
+  background: repeating-linear-gradient(45deg, #f6f7f9, #f6f7f9 3px, #eceef2 3px, #eceef2 6px);
+}
+
+.fairness {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.barLabel {
+  flex: 1;
+  font-size: 11px;
+  text-align: center;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  background: #f1f3f7;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+}
+
+.tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #1f2430;
+  transform: translateX(-1px);
+}
+
+.load {
+  flex: 0 0 48px;
+  font-size: 11px;
+  color: #667;
+  text-align: right;
+}
+
+.empty {
+  padding: 16px 4px;
+  color: #889;
+}

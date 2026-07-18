@@ -1,0 +1,269 @@
+/* Print styles for the three courtside artifacts. On screen each renders as a light "paper" preview;
+   under @media print it becomes the artifact. Orientation is per-artifact via named @page rules
+   (wall grid landscape; duty slips + call sheets portrait) — one static stylesheet, no JS rewrite.
+   The caller triggers window.print(). */
+
+@page grid-page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+@page sheet-page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+.print-artifact {
+  --print-ink: #12181f;
+  --print-muted: #5b636e;
+  --print-line: #c8ccd2;
+  --print-hdr-bg: #eef1f5;
+  color: var(--print-ink);
+  font: 13px/1.4 system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* header band — repeats per printed page */
+.print-hdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 2px solid var(--print-ink);
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+.print-hdr-t {
+  font-size: 18px;
+  font-weight: 700;
+}
+.print-hdr-d {
+  font-size: 14px;
+  font-weight: 600;
+}
+.print-hdr-g {
+  font-size: 11px;
+  color: var(--print-muted);
+  white-space: nowrap;
+}
+
+/* referee identity: solid color dot kept on color printers; full name carries B/W identity */
+.print-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 5px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.print-ref {
+  white-space: nowrap;
+}
+.print-none {
+  color: var(--print-muted);
+}
+
+/* gender text tag — print-safe, never color-only */
+.print-g {
+  font-weight: 700;
+}
+.print-gW {
+  color: #9d174d;
+}
+.print-gM {
+  color: #1e3a8a;
+}
+
+/* ---------- master wall grid (landscape) ---------- */
+.wg-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.wg-table th,
+.wg-table td {
+  border: 1px solid var(--print-line);
+  padding: 4px 6px;
+  vertical-align: top;
+  text-align: left;
+}
+.wg-table thead th {
+  background: var(--print-hdr-bg);
+  font-size: 12px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.wg-rh {
+  font-weight: 600;
+  white-space: nowrap;
+  width: 74px;
+}
+.wg-time {
+  font-size: 11px;
+  color: var(--print-muted);
+  font-weight: 500;
+}
+.wg-idle {
+  color: var(--print-muted);
+}
+.wg-top {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.wg-mno {
+  font-size: 10px;
+  color: var(--print-muted);
+}
+.wg-role {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-top: 2px;
+}
+.wg-k {
+  font-size: 9px;
+  color: var(--print-muted);
+  width: 10px;
+}
+
+/* ---------- per-referee duty slips (portrait, 2-up) ---------- */
+.ds-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10mm;
+}
+.slip {
+  border: 1.5px solid var(--print-ink);
+  border-radius: 6px;
+  padding: 9px 11px;
+  break-inside: avoid;
+}
+.slip-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--print-line);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+.slip-name {
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+}
+.slip-count {
+  font-size: 11px;
+  color: var(--print-muted);
+}
+.slip-sub {
+  font-size: 11px;
+  color: var(--print-muted);
+  margin-bottom: 6px;
+}
+.slip-free {
+  color: var(--print-muted);
+  font-style: italic;
+}
+.slip-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.slip-table th,
+.slip-table td {
+  text-align: left;
+  padding: 2px 5px;
+}
+.slip-table thead th {
+  font-size: 10px;
+  color: var(--print-muted);
+  border-bottom: 1px solid var(--print-line);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ds-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ds-role {
+  font-weight: 700;
+}
+
+/* ---------- per-court call sheets (portrait, 1 page/court) ---------- */
+.call-court {
+  break-before: page;
+}
+.call-court:first-of-type {
+  break-before: auto;
+}
+.cs-title {
+  font-size: 22px;
+  font-weight: 650;
+  margin: 0 0 10px;
+}
+.cs-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.cs-table th,
+.cs-table td {
+  border: 1px solid var(--print-line);
+  padding: 6px 8px;
+  text-align: left;
+}
+.cs-table thead th {
+  background: var(--print-hdr-bg);
+  font-size: 12px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.cs-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* ---------- screen preview: a centered paper frame, dropped for print ---------- */
+@media screen {
+  .print-artifact {
+    background: #fff;
+    margin: 16px auto;
+    padding: 14mm;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+  }
+  .wall-grid {
+    max-width: 297mm;
+  }
+  .duty-slips,
+  .call-sheets {
+    max-width: 210mm;
+  }
+  .wg-rh {
+    background: #f4f6f8;
+  }
+}
+
+/* ================= @media print — the actual artifact ================= */
+@media print {
+  .print-artifact {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* per-artifact orientation */
+  .wall-grid {
+    page: grid-page;
+  }
+  .duty-slips,
+  .call-sheets {
+    page: sheet-page;
+  }
+  .call-court {
+    break-before: page;
+  }
+  .call-court:first-of-type {
+    break-before: auto;
+  }
+  .slip {
+    break-inside: avoid;
+  }
+}

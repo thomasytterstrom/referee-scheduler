@@ -71,7 +71,8 @@
     "unpin": "Unpin",
     "pinned": "Pinned",
     "override": "Choose referee",
-    "noReferee": "—"
+    "noReferee": "—",
+    "roundShort": "R{round}"
   },
   "warnings": {
     "header": {
@@ -128,10 +129,16 @@
     },
     "slip": {
       "title": "Your duties today",
-      "dutyCount": "{count} duties"
+      "dutyCount": "{count} duties",
+      "none": "No duties today."
     },
     "roundLabel": "R{round}",
+    "roleShort": {
+      "head": "H",
+      "assistant": "A"
+    },
     "col": {
+      "round": "Round",
       "time": "Time",
       "court": "Court",
       "match": "Match",
@@ -140,5 +147,14 @@
       "head": "Head",
       "assistant": "Assistant"
     }
+  },
+  "refereeView": {
+    "heading": "Referees",
+    "round": "R{round}",
+    "abbr": { "head": "H", "assistant": "A", "sit": "·" },
+    "resting": "Resting",
+    "unavailable": "Unavailable",
+    "load": "{count} / {target}",
+    "empty": "No referees available this day."
   }
 }
