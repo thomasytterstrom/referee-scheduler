@@ -9,7 +9,7 @@ Given a tournament's referee roster, courts, and match schedule, the app automat
 Key features:
 
 - **Solver** — greedy seed + simulated annealing. Hard constraints satisfied by construction; soft constraints weighted and scored.
-- **Day-by-day workflow** — finalize each day to lock carryover stats (duty counts, pair history) into subsequent days.
+- **Day-by-day workflow** — each day's carryover stats (duty counts, pair history) automatically feed into subsequent days.
 - **Interactive grid** — round × court grid with click/drag assignment, manual pinning, and per-referee detail view.
 - **Generate & Reshuffle** — one-click solve with seed control for reproducible results.
 - **Warnings panel** — highlights violated soft constraints in real time.
@@ -71,5 +71,5 @@ docs/           # Specs: domain model, constraint rules, solver algorithm, UI, p
 - **Solver portability** — `src/domain/` has zero dependencies beyond an injectable RNG. Can run in a web worker or be ported to WASM without touching React code.
 - **Hard constraints by construction** — the solver only proposes feasible moves, so simulated annealing stays in the feasible region without penalty terms.
 - **Typed-array problem representation** — `Problem`/`Sol` use `Int32Array`/`Float64Array` for performance; object graphs are only in the model layer.
-- **Live carryover** — never persisted; recomputed on demand from finalized days. Editing a day flags downstream days as stale.
+- **Live carryover** — never persisted; recomputed on demand from all earlier days. Regenerate a later day to pick up edits to an earlier one.
 - **Static hosting** — builds to `dist/` with base path `/referee-scheduler/`, suitable for GitHub Pages.

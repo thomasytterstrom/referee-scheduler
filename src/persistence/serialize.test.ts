@@ -15,7 +15,6 @@ const sample: Tournament = {
   days: [
     {
       index: 0,
-      status: "draft",
       availableCourtIds: ["c0"],
       availability: { r0: null, r1: [0] },
       rounds: [

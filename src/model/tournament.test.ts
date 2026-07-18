@@ -27,7 +27,6 @@ describe("Tournament graph shape (compile + invariants 4/8)", () => {
   test("assignments carry an always-present head and assistant iff requiresAssistant", () => {
     const day: Day = {
       index: 0,
-      status: "draft",
       availableCourtIds: ["c0"],
       availability: { r0: null, r1: [0] }, // r1 restricted to round 0
       rounds: [

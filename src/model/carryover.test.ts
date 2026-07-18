@@ -1,17 +1,16 @@
-// carryoverFor folds every FINALIZED day before the target into a domain Carry (constraint-spec.md
+// carryoverFor folds every earlier day before the target into a domain Carry (constraint-spec.md
 // §Carryover + domain-model.md §Carryover). Expected totals hand-computed from day 0's assignments.
 
 import { describe, test, expect } from "vitest";
 import { carryoverFor } from "./carryover.ts";
 import type { Tournament, Day } from "./tournament.ts";
 
-// 4 refs; r3 appears only on day 1. Day 0 (finalized), 1 court, 2 rounds:
+// 4 refs; r3 appears only on day 1. Day 0, 1 court, 2 rounds:
 //   round 0: mA (W, pair) -> head r0, asst r1
 //   round 1: mB (M, pair) -> head r1, asst r2
 function twoDayFixture(): Tournament {
   const day0: Day = {
     index: 0,
-    status: "finalized",
     availableCourtIds: ["c0"],
     availability: { r0: null, r1: null, r2: null }, // r3 not available day 0
     rounds: [
@@ -25,7 +24,6 @@ function twoDayFixture(): Tournament {
   };
   const day1: Day = {
     index: 1,
-    status: "draft",
     availableCourtIds: ["c0"],
     availability: { r0: null, r1: null, r2: null, r3: null },
     rounds: [{ index: 0, matches: [] }],
@@ -43,7 +41,7 @@ function twoDayFixture(): Tournament {
   };
 }
 
-describe("carryoverFor — target day 1 folds finalized day 0", () => {
+describe("carryoverFor — target day 1 folds earlier day 0", () => {
   const c = carryoverFor(twoDayFixture(), 1);
   const N = 4;
 
@@ -78,7 +76,7 @@ describe("carryoverFor — target day 1 folds finalized day 0", () => {
   });
 });
 
-describe("carryoverFor — no finalized day before target", () => {
+describe("carryoverFor — no day before target", () => {
   test("target day 0 yields an empty carry", () => {
     const c = carryoverFor(twoDayFixture(), 0);
     expect(c.totalHead).toBe(0);
@@ -88,11 +86,12 @@ describe("carryoverFor — no finalized day before target", () => {
     expect(Array.from(c.avail)).toEqual([0, 0, 0, 0]);
   });
 
-  test("a draft earlier day is NOT folded", () => {
+  test("every earlier day folds regardless of how far along it is", () => {
+    // Partial day 0 (one match still unassigned) still contributes its solved slots.
     const t = twoDayFixture();
-    t.days[0].status = "draft"; // un-finalize day 0
+    t.days[0].assignments.pop(); // drop mB -> only mA remains assigned
     const c = carryoverFor(t, 1);
-    expect(c.totalHead).toBe(0);
-    expect(Array.from(c.H)).toEqual([0, 0, 0, 0]);
+    expect(c.totalHead).toBe(1); // r0 head mA
+    expect(Array.from(c.H)).toEqual([1, 0, 0, 0]);
   });
 });

@@ -36,14 +36,13 @@ describe("end-to-end pipeline — import → solve → apply → validate → pe
   const { tournament, errors } = parseImport(SAMPLE);
   withRoster(tournament, ROSTER_SIZE);
 
-  // Solve every day in order, applying + finalizing so day N+1 sees day N's assignments as carryover.
+  // Solve every day in order, applying each so day N+1 sees day N's assignments as carryover.
   const dayValidation: string[][] = [];
   tournament.days.forEach((day, i) => {
     const { problem, map } = toProblem(tournament, i);
     const carry = carryoverFor(tournament, i);
     const result = solve(problem, carry, { budgetMs: 150, seed: 12345 });
     applySol(day, result.sol, map);
-    day.status = "finalized";
     // Re-derive from the mutated day to prove the model round-trip itself is hard-valid.
     const check = toProblem(tournament, i);
     dayValidation.push(validate(check.problem, check.sol));

@@ -152,7 +152,7 @@ function buildTournament(rows: Row[]): Tournament {
       if (r.matchnamn) m.highlight = true; // §1.5 (label itself has no field on Match)
       roundByTime.get(r.startTime)!.matches.push(m);
     }
-    return { index: di, status: "draft", availableCourtIds: [...allCourtIds], availability: {}, rounds, assignments: [] };
+    return { index: di, availableCourtIds: [...allCourtIds], availability: {}, rounds, assignments: [] };
   });
 
   return { referees: [], courts, days };
@@ -193,7 +193,6 @@ function ensureIncDay(inc: Tournament, di: number, exDay: Day, finalCourtIds: Se
   while (inc.days.length <= di) {
     inc.days.push({
       index: inc.days.length,
-      status: exDay.status,
       availability: exDay.availability,
       availableCourtIds: exDay.availableCourtIds.filter((id) => finalCourtIds.has(id)),
       rounds: [],
@@ -275,12 +274,11 @@ export function mergeImport(existing: Tournament, input: ImportInput): MergeResu
       }
   });
 
-  // 6. Preserve per-day status / availability / court selection; new courts default-selected.
+  // 6. Preserve per-day availability / court selection; new courts default-selected.
   const exCourtIds = new Set(existing.courts.map((c) => c.id));
   inc.days.forEach((day, i) => {
     const ex = existing.days[i];
     if (!ex) return;
-    day.status = ex.status;
     day.availability = ex.availability;
     day.availableCourtIds = [
       ...ex.availableCourtIds.filter((id) => finalCourtIds.has(id)),

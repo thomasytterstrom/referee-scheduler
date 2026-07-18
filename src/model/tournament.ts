@@ -4,7 +4,6 @@
 // live (never stored). Names are mutable display labels.
 
 export type Gender = "W" | "M";
-export type DayStatus = "draft" | "finalized";
 
 export interface Referee {
   id: string; // identity — pairing history + carryover key on this, never `name`
@@ -47,7 +46,6 @@ export interface Round {
 
 export interface Day {
   index: number; // position in tournament.days
-  status: DayStatus; // finalize is reversible -> back to draft
   availableCourtIds: string[]; // subset of the court roster used this day
   // refId -> available round indices this day. `null` = all of the day's rounds (the default);
   // an array restricts to a subset. An absent refId = not available this day.

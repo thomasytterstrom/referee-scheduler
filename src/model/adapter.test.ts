@@ -14,7 +14,6 @@ import type { Tournament, Day } from "./tournament.ts";
 function mappingTournament(): Tournament {
   const day: Day = {
     index: 0,
-    status: "draft",
     availableCourtIds: ["c0"], // c1 excluded -> its matches drop out of the Problem
     availability: { r0: null, r1: [0], r2: null }, // r1 available round 0 only
     rounds: [
@@ -111,7 +110,6 @@ function roundTripTournament(): Tournament {
   }));
   const day: Day = {
     index: 0,
-    status: "draft",
     availableCourtIds: ["c0"],
     availability: { r0: null, r1: null, r2: null, r3: null },
     rounds,
