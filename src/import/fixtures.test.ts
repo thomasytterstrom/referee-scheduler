@@ -53,10 +53,10 @@ describe("parseImport — federation sample", () => {
     expect(byNo(t, "5")?.gender).toBe("W"); // Klass D
   });
 
-  test("requiresAssistant defaults true; highlight only when Matchnamn present", () => {
+  test("requiresAssistant defaults true; matchName only when Matchnamn present", () => {
     expect(allMatches(t).every((m) => m.requiresAssistant)).toBe(true);
-    expect(byNo(t, "1")?.highlight).not.toBe(true); // group stage, blank Matchnamn
-    expect(byNo(t, "17")?.highlight).toBe(true); // "Åttondel 1"
+    expect(byNo(t, "1")?.matchName).toBeUndefined(); // group stage, blank Matchnamn
+    expect(byNo(t, "17")?.matchName).toBe("Åttondel 1"); // knockout label
   });
 
   test("every court selected on every day by default", () => {

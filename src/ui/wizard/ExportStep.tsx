@@ -1,10 +1,11 @@
 // Export — download the tournament as a versioned JSON envelope (`<name>_<date>.json`) and/or save it
 // to the IndexedDB library (autosave already persists continuously; "Save to library" is an explicit,
-// immediate write). Below that, the three courtside print artifacts for the selected day: pick one and
-// window.print() emits ONLY that artifact (exportPrint.css isolates it) so its own @page orientation
-// applies.
+// immediate write). Below that, the three courtside print artifacts for the selected day: tabs switch
+// which one is previewed (no print); the Print button emits whatever is shown. window.print() emits
+// ONLY that artifact (exportPrint.css isolates it) so its own @page orientation applies. The preview
+// is a fixed-ink white "paper" (print.css) — it stays light even in dark mode, matching the sheet.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "../state/store.tsx";
 import { serialize } from "../../persistence/serialize.ts";
 import { saveTournament, setLastOpenedId } from "../../persistence/db.ts";
@@ -21,24 +22,8 @@ export function ExportStep() {
   const store = useStore();
   const [saved, setSaved] = useState(false);
   const [artifact, setArtifact] = useState<Artifact>("wallGrid");
-  const printPending = useRef(false);
   // One timestamp per visit to this step; rendered verbatim into every artifact header.
   const generatedAt = useMemo(() => new Date().toLocaleString(), []);
-
-  // Print only the chosen artifact: switch the preview, then print once the DOM reflects the change.
-  useEffect(() => {
-    if (!printPending.current) return;
-    printPending.current = false;
-    window.print();
-  }, [artifact]);
-
-  const printArtifact = (a: Artifact) => {
-    if (a === artifact) window.print();
-    else {
-      printPending.current = true;
-      setArtifact(a);
-    }
-  };
 
   const download = () => {
     const json = JSON.stringify(serialize(store.tournament), null, 2);
@@ -82,12 +67,37 @@ export function ExportStep() {
         <p className="mb-3 text-muted-foreground">{t("wizard.export.printSubtitle")}</p>
         {day ? (
           <>
-            <div className="mb-4 flex flex-wrap gap-2.5">
-              {ARTIFACTS.map((a) => (
-                <Button key={a} variant="outline" onClick={() => printArtifact(a)}>
-                  {t("wizard.export.printArtifact", { artifact: t(`print.artifact.${a}`) })}
-                </Button>
-              ))}
+            {/* Switch the previewed artifact (no print); the Print button emits whatever is shown. */}
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <div
+                role="tablist"
+                aria-label={t("wizard.export.print")}
+                className="inline-flex rounded-md border bg-muted/40 p-1"
+              >
+                {ARTIFACTS.map((a) => {
+                  const active = a === artifact;
+                  return (
+                    <button
+                      key={a}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      className={
+                        "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors " +
+                        (active
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground")
+                      }
+                      onClick={() => setArtifact(a)}
+                    >
+                      {t(`print.artifact.${a}`)}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button onClick={() => window.print()}>
+                {t("wizard.export.printArtifact", { artifact: t(`print.artifact.${artifact}`) })}
+              </Button>
             </div>
             <div className="print-area">
               {artifact === "wallGrid" && <WallGrid {...printProps} />}

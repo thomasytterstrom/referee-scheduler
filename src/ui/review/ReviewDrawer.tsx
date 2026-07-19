@@ -23,12 +23,12 @@ export function ReviewDrawer({ tournament, dayIndex, runReason }: ReviewDrawerPr
   const breakdown = scoreDay(problem, sol, carryoverFor(tournament, dayIndex));
 
   return (
-    <section className="mt-5 flex flex-wrap gap-5 border-t pt-4">
-      <div className="min-w-0 flex-[1_1_420px]">
+    <section className="mt-5 flex flex-col gap-5 border-t pt-4">
+      <div className="min-w-0">
         <RefereeView tournament={tournament} dayIndex={dayIndex} />
         <CumulativeFairness tournament={tournament} dayIndex={dayIndex} />
       </div>
-      <div className="min-w-[260px] flex-[0_1_320px]">
+      <div>
         <WarningsPanel
           tournament={tournament}
           dayIndex={dayIndex}

@@ -1,8 +1,7 @@
-/* Self-contained styling for the read-only per-referee review. Rows share fixed column widths so
-   the round header aligns over every ref's timeline; the whole block scrolls horizontally as one. */
+/* Self-contained styling for the read-only per-referee review. Name and fairness columns are fixed;
+   the round cells flex to share the remaining width so the timeline fits without horizontal scroll. */
 
 .root {
-  overflow-x: auto;
   font: 13px/1.4 system-ui, sans-serif;
   color: var(--foreground);
 }
@@ -11,7 +10,6 @@
   display: flex;
   align-items: stretch;
   gap: 8px;
-  min-width: min-content;
   border-bottom: 1px solid var(--border);
 }
 
@@ -44,19 +42,25 @@
 
 .timeline {
   display: flex;
+  flex: 1 1 auto;
   gap: 3px;
   padding: 4px 0;
+  min-width: 0;
 }
 
 .roundHead {
-  flex: 0 0 26px;
+  flex: 1 1 26px;
+  min-width: 0;
+  max-width: 40px;
   text-align: center;
   font-size: 11px;
   color: var(--muted-foreground);
 }
 
 .cell {
-  flex: 0 0 26px;
+  flex: 1 1 26px;
+  min-width: 0;
+  max-width: 40px;
   height: 26px;
   display: flex;
   align-items: center;
@@ -64,6 +68,7 @@
   border-radius: 4px;
   font-weight: 700;
   color: var(--ref-cell-foreground);
+  overflow: hidden;
 }
 
 .head,

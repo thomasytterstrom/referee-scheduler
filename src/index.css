@@ -1,8 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Light-only: the grid, print, and step-body layers are hardcoded light, so the app ships light
-   throughout. `dark` is class-gated and never toggled, so no OS-dark styling leaks in. */
+/* Dual theme, class-toggled on <html>: light = Swedish Beach Tour brand (ocean blue + sand gold);
+   dark = Vercel-style mono (pure black, white primary). Every view is token-driven — the grid,
+   referee, and warnings modules read the same vars — so both palettes flip from this one file.
+   Print stays light regardless (print.css carries its own fixed inks). */
 @custom-variant dark (&:is(.dark *));
 
 /* Brand palette sampled from the Swedish Beach Tour hero: ocean blue primary, sand-gold accent. */
@@ -65,6 +67,68 @@
   --warn-clean-bg: oklch(0.982 0.018 155.8); /* #f0fdf4 */
   --warn-clean-border: oklch(0.925 0.081 156); /* #bbf7d0 */
   --warn-clean-fg: oklch(0.448 0.108 151.3); /* #166534 */
+}
+
+/* Dark = Vercel mono: pure-black surfaces, white primary, neutral-gray scale. Core tokens are the
+   Vercel registry values; the data-module tokens below are re-tuned for a black backdrop (gender
+   hues brightened, warning tiers become deep-tinted panels with light ink). */
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(0 0 0);
+  --foreground: oklch(1 0 0);
+  --card: oklch(0.1815 0 0);
+  --card-foreground: oklch(1 0 0);
+  --popover: oklch(0.1815 0 0);
+  --popover-foreground: oklch(1 0 0);
+
+  --primary: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.2484 0 0);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.2484 0 0);
+  --muted-foreground: oklch(0.6239 0 0);
+  --accent: oklch(0.3008 0 0);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.568 0.2255 28.52);
+
+  --border: oklch(0.3211 0 0);
+  --input: oklch(0.3211 0 0);
+  --ring: oklch(0.7652 0 0);
+
+  /* Sand accent kept (gold reads well on black), nudged lighter for the darker backdrop. */
+  --sand: oklch(0.8 0.14 80);
+  --sand-foreground: oklch(0.28 0.05 70);
+
+  --chart-1: oklch(0.72 0.16 262);
+  --chart-2: oklch(0.8 0.14 80);
+  --chart-3: oklch(0.7 0.12 200);
+  --chart-4: oklch(0.68 0.14 300);
+  --chart-5: oklch(0.75 0.15 45);
+
+  /* Data-dense module palette (Grid, RefereeView, WarningsPanel) — dark backdrop variants. */
+  --gender-mens: oklch(0.62 0.19 262); /* brighter blue on black */
+  --gender-womens: oklch(0.66 0.22 358); /* brighter pink on black */
+  --pin-active: oklch(0.34 0.07 85); /* muted amber highlight */
+  --ref-cell-foreground: oklch(1 0 0); /* white on colored cells */
+  --unavailable-hatch-a: oklch(0.22 0 0);
+  --unavailable-hatch-b: oklch(0.28 0 0);
+
+  --warn-critical: oklch(0.637 0.208 25.3);
+  --warn-critical-bg: oklch(0.27 0.07 25);
+  --warn-critical-border: oklch(0.42 0.12 25);
+  --warn-critical-fg: oklch(0.86 0.09 22);
+  --warn-major: oklch(0.769 0.165 70.1);
+  --warn-major-bg: oklch(0.28 0.06 65);
+  --warn-major-border: oklch(0.45 0.1 65);
+  --warn-major-fg: oklch(0.87 0.1 80);
+  --warn-minor: oklch(0.85 0.16 92);
+  --warn-minor-bg: oklch(0.29 0.06 95);
+  --warn-minor-border: oklch(0.47 0.09 95);
+  --warn-minor-fg: oklch(0.89 0.11 100);
+  --warn-clean-bg: oklch(0.27 0.06 155);
+  --warn-clean-border: oklch(0.42 0.09 155);
+  --warn-clean-fg: oklch(0.86 0.12 158);
 }
 
 @theme inline {

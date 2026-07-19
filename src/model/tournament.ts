@@ -35,7 +35,7 @@ export interface Match {
   matchNo?: string; // external match number (Excel KampNr)
   homeTeam?: string;
   awayTeam?: string;
-  highlight?: boolean; // optional "final/important" display tag — no solver logic
+  matchName?: string; // optional round label (e.g. "Final"); present => "important" bar, no solver logic
 }
 
 export interface Round {
