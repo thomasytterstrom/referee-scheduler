@@ -16,6 +16,7 @@ import { deserialize } from "../../persistence/serialize.ts";
 import { t } from "../../i18n/t.ts";
 import { Button } from "@/ui/shadcn/ui/button";
 import { Card } from "@/ui/shadcn/ui/card";
+import { ThemeToggle } from "../theme.tsx";
 import bannerImg from "../../assets/beach-banner.png";
 
 export interface Active {
@@ -86,6 +87,7 @@ export function TournamentPicker({ onOpen }: { onOpen: (a: Active) => void | Pro
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/60 via-primary/40 to-primary/60" />
+        <ThemeToggle className="absolute top-4 right-4 z-10 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" />
         <div className="relative mx-auto flex max-w-3xl flex-col items-start gap-5 px-6 py-20 text-primary-foreground sm:py-28">
           <h1 className="text-4xl font-semibold tracking-tight drop-shadow-sm sm:text-5xl">
             {t("common.appName")}

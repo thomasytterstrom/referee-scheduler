@@ -126,7 +126,7 @@ function MatchCell({
   const assistant = match.requiresAssistant ? assignment?.assistant ?? EMPTY_SLOT : null;
   const pinned = head.pinned || (assistant?.pinned ?? false);
   const teams = [match.homeTeam, match.awayTeam].filter(Boolean).join(" – ");
-  const classes = [styles.match, pinned && styles.pinnedCell, match.highlight && styles.highlight]
+  const classes = [styles.match, pinned && styles.pinnedCell, match.matchName && styles.highlight]
     .filter(Boolean)
     .join(" ");
 
@@ -141,6 +141,7 @@ function MatchCell({
         {match.matchNo && (
           <span className={styles.matchNo}>{t("grid.matchLabel", { match: match.matchNo })}</span>
         )}
+        {match.matchName && <span className={styles.matchName}>{match.matchName}</span>}
       </div>
       {teams && <div className={styles.teams}>{teams}</div>}
       <SlotControl

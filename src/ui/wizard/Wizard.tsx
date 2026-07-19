@@ -15,6 +15,7 @@ import { useSolveController } from "../solve/solveController.ts";
 import { GenerateModal } from "../solve/GenerateModal.tsx";
 import { Button } from "@/ui/shadcn/ui/button";
 import { Input } from "@/ui/shadcn/ui/input";
+import { ThemeToggle } from "../theme.tsx";
 
 const STEPS = ["setup", "import", "generate", "review", "export"] as const;
 type Step = (typeof STEPS)[number];
@@ -78,6 +79,7 @@ export function Wizard({ onExit }: WizardProps) {
             onChange={(e) => store.setName(e.target.value)}
           />
           <DaySwitcher />
+          <ThemeToggle />
         </header>
         <section className="min-h-0 flex-1 overflow-auto p-5">
           {step === "setup" && <SetupStep />}

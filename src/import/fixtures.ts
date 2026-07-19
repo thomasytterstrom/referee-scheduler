@@ -149,7 +149,7 @@ function buildTournament(rows: Row[]): Tournament {
       if (r.matchNo) m.matchNo = r.matchNo;
       if (r.homeTeam) m.homeTeam = r.homeTeam;
       if (r.awayTeam) m.awayTeam = r.awayTeam;
-      if (r.matchnamn) m.highlight = true; // §1.5 (label itself has no field on Match)
+      if (r.matchnamn) m.matchName = r.matchnamn; // §1.5
       roundByTime.get(r.startTime)!.matches.push(m);
     }
     return { index: di, availableCourtIds: [...allCourtIds], availability: {}, rounds, assignments: [] };
