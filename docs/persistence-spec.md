@@ -98,6 +98,14 @@ keyed on `Kamp Id` (composite `(day, Starttid, Spelplats)` when `Kamp Id` blank)
 Rationale: over a live two-day event the federation re-exports repeatedly (bracket teams resolve,
 times shift, Sunday knockout firms up). Assignments and pins must survive re-import.
 
+**Multi-file union.** When the federation splits one event into separate competition files (e.g.
+men's + women's), the import accepts **several files at once**: their rows are concatenated and
+built/merged as **one authoritative** schedule over the union — identical to the single combined
+file the federation can also produce. No per-source concept; incoming rows dedupe by `Kamp Id`
+(keep-first + warn). A re-import is authoritative over exactly the files passed that time, so
+re-import all files together; the merge report shows a per-file match count so both are seen to
+land. See [ADR 0002](adr/0002-multi-file-union-import.md).
+
 ### 1.5 Assistant requirement & highlight
 
 - `requiresAssistant` defaults to **true** for every imported match (the Excel tool always assigns
