@@ -25,3 +25,5 @@ dist-ssr
 
 # Matt Pocock skills tooling (not part of the app)
 skills-lock.json
+
+.claude/worktrees/
