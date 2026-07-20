@@ -1,10 +1,9 @@
-// Master wall grid — landscape, one page per day. Rounds down the side, courts across the top; each
-// cell shows match no + gender + Head + Assistant. The single "source of truth" sheet at the desk.
 import { t } from "../../i18n/t.ts";
 import {
   DocHeader,
   GenderTag,
   RefLabel,
+  makeRefColorMap,
   byId,
   assignmentsByMatch,
   dayCourts,
@@ -22,6 +21,7 @@ export function WallGrid({ tournament, dayIndex, generatedAt, tournamentName }: 
   const rounds = sortedRounds(day);
   const assignments = assignmentsByMatch(day);
   const name = tournamentName ?? t("common.appName");
+  const colorMap = makeRefColorMap(tournament.referees.map((r) => r.id));
 
   return (
     <section className="print-artifact wall-grid">
@@ -60,12 +60,12 @@ export function WallGrid({ tournament, dayIndex, generatedAt, tournamentName }: 
                     </div>
                     <div className="wg-role">
                       <span className="wg-k">{t("print.roleShort.head")}</span>
-                      <RefLabel ref={head} />
+                      <RefLabel ref={head} colorMap={colorMap} />
                     </div>
                     {match.requiresAssistant && (
                       <div className="wg-role">
                         <span className="wg-k">{t("print.roleShort.assistant")}</span>
-                        <RefLabel ref={asst} />
+                        <RefLabel ref={asst} colorMap={colorMap} />
                       </div>
                     )}
                   </td>

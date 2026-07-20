@@ -163,6 +163,11 @@ function CloudTournamentPicker({ onOpen }: { onOpen: (a: Active) => void | Promi
     await cloudCtx.refresh();
   };
 
+  const removeCloud = async (id: string) => {
+    await cloudCtx.remove(id);
+    await deleteTournament(id);
+  };
+
   const filteredCloud = cloudCtx.list.filter((m) => m.status === statusFilter);
 
   return (
@@ -274,7 +279,7 @@ function CloudTournamentPicker({ onOpen }: { onOpen: (a: Active) => void | Promi
                         size="icon"
                         aria-label={t("common.delete")}
                         className="text-muted-foreground hover:text-destructive"
-                        onClick={() => void cloudCtx.remove(m.id)}
+                        onClick={() => void removeCloud(m.id)}
                       >
                         <Trash2 className="size-4" />
                       </Button>

@@ -1,11 +1,9 @@
-// Per-court call sheets — portrait, one page per court (page break between courts, in print.css).
-// Chronological referee list for the court: Time · Match no · Class · Head · Assistant. No score
-// column — the app assigns referees, it does not track match results.
 import { t } from "../../i18n/t.ts";
 import {
   DocHeader,
   GenderTag,
   RefLabel,
+  makeRefColorMap,
   byId,
   assignmentsByMatch,
   dayCourts,
@@ -23,6 +21,7 @@ export function CallSheets({ tournament, dayIndex, generatedAt, tournamentName }
   const rounds = sortedRounds(day);
   const assignments = assignmentsByMatch(day);
   const name = tournamentName ?? t("common.appName");
+  const colorMap = makeRefColorMap(tournament.referees.map((r) => r.id));
 
   return (
     <section className="print-artifact call-sheets">
@@ -69,11 +68,11 @@ export function CallSheets({ tournament, dayIndex, generatedAt, tournamentName }
                       <GenderTag gender={match.gender} />
                     </td>
                     <td>
-                      <RefLabel ref={head} />
+                      <RefLabel ref={head} colorMap={colorMap} />
                     </td>
                     <td>
                       {match.requiresAssistant ? (
-                        <RefLabel ref={asst} />
+                        <RefLabel ref={asst} colorMap={colorMap} />
                       ) : (
                         <span className="print-none">—</span>
                       )}

@@ -10,6 +10,14 @@ export interface DirectoryMergeResult {
   changed: boolean;
 }
 
+function normalizeName(raw: string): string {
+  return raw.trim().replace(/\s+/g, " ");
+}
+
+function nameKey(raw: string): string {
+  return normalizeName(raw).toLowerCase();
+}
+
 function timeValue(iso: string | undefined): number {
   if (!iso) return 0;
   const parsed = Date.parse(iso);
@@ -49,8 +57,38 @@ export function mergeDirectoryRecords(
     }
   }
 
+  const merged = [...byId.values()];
+  const nowIso = new Date().toISOString();
+  const liveByName = new Map<string, DirectoryRecord>();
+  for (const row of merged) {
+    if (row.deletedAt) continue;
+    const key = nameKey(row.name);
+    const existing = liveByName.get(key);
+    if (!existing) {
+      liveByName.set(key, row);
+      continue;
+    }
+
+    const currentTs = timeValue(row.updatedAt);
+    const existingTs = timeValue(existing.updatedAt);
+    const winner =
+      currentTs > existingTs ||
+      (currentTs === existingTs && row.id.localeCompare(existing.id) < 0)
+        ? row
+        : existing;
+    const loser = winner === row ? existing : row;
+    const deletedAt =
+      timeValue(nowIso) > timeValue(winner.updatedAt) ? nowIso : winner.updatedAt;
+    if (loser.deletedAt !== deletedAt || loser.updatedAt !== deletedAt) {
+      loser.deletedAt = deletedAt;
+      loser.updatedAt = deletedAt;
+      changed = true;
+    }
+    liveByName.set(key, winner);
+  }
+
   return {
-    records: [...byId.values()].sort((a, b) => a.id.localeCompare(b.id)),
+    records: merged.sort((a, b) => a.id.localeCompare(b.id)),
     changed,
   };
 }
