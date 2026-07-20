@@ -9,6 +9,7 @@ import { useDirectory } from "../state/directory.tsx";
 import { t } from "../../i18n/t.ts";
 import { Button } from "@/ui/shadcn/ui/button";
 import { Input } from "@/ui/shadcn/ui/input";
+import { CloudDirectoryPanel } from "./CloudDirectoryPanel.tsx";
 
 export function RefereeLibrary() {
   const dir = useDirectory();
@@ -16,6 +17,7 @@ export function RefereeLibrary() {
 
   return (
     <section className="mx-auto max-w-3xl px-6 pb-16">
+      <CloudDirectoryPanel />
       <h2 className="text-lg font-semibold">{t("library.title")}</h2>
       <p className="mt-1 mb-4 text-sm text-muted-foreground">{t("library.subtitle")}</p>
       {entries.length === 0 ? (

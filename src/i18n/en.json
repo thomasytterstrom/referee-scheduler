@@ -206,5 +206,23 @@
     "rename": "Rename referee",
     "duplicate": "A referee named “{name}” already exists.",
     "confirmDelete": "Remove “{name}” from the library? Tournaments already using this referee keep their copy."
+  },
+  "cloud": {
+    "title": "Cloud directory sync",
+    "subtitle": "Sign in to sync this referee library with the shared federation directory.",
+    "unconfigured": "Cloud sync is off. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable Supabase.",
+    "email": "Email address",
+    "signIn": "Send magic link",
+    "sending": "Sending…",
+    "signOut": "Sign out",
+    "linkSent": "Check your email for a sign-in link.",
+    "syncedAs": "Synced as {email}.",
+    "status": "Status: {status}",
+    "sync": {
+      "local": "local only",
+      "syncing": "syncing",
+      "synced": "synced",
+      "error": "sync error"
+    }
   }
 }
