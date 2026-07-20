@@ -4,6 +4,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Tournament } from "../model/tournament.ts";
 import {
+  deleteCloudTournament,
   migrateLocalTournamentsToCloud,
   saveCloudTournament,
 } from "./supabaseTournaments.ts";
@@ -188,5 +189,81 @@ describe("migrateLocalTournamentsToCloud", () => {
     const client = mockClient();
     const uploaded = await migrateLocalTournamentsToCloud(client, [], "user-123");
     expect(uploaded).toEqual([]);
+  });
+
+  it("skips tournaments that were previously deleted in the cloud", async () => {
+    const tables: string[] = [];
+    const chain = {
+      table: "",
+      select: () => chain,
+      in: () => {
+        if (chain.table === "tournaments") return Promise.resolve({ data: [], error: null });
+        if (chain.table === "tournament_tombstones") {
+          return Promise.resolve({ data: [{ tournament_id: "t2" }], error: null });
+        }
+        return Promise.resolve({ data: [], error: null });
+      },
+      eq: () => chain,
+      insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
+      single: () => Promise.resolve({ data: null, error: null }),
+      then: (resolve: (v: unknown) => unknown) =>
+        Promise.resolve({ data: null, error: null }).then(resolve),
+    };
+
+    const client = {
+      from: vi.fn((table: string) => {
+        tables.push(table);
+        chain.table = table;
+        return chain;
+      }),
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } }, error: null }),
+      },
+    } as unknown as import("./supabaseClient.ts").SchedulerSupabaseClient;
+
+    const uploaded = await migrateLocalTournamentsToCloud(
+      client,
+      [
+        { id: "t1", name: "Keep", tournament: emptyTournament() },
+        { id: "t2", name: "Deleted", tournament: emptyTournament() },
+      ],
+      "user-123",
+    );
+
+    expect(uploaded).toEqual(["t1"]);
+    expect(chain.insert).toHaveBeenCalledTimes(1);
+    const rows = chain.insert.mock.calls[0]?.[0] as Array<{ id: string }>;
+    expect(rows.map((r) => r.id)).toEqual(["t1"]);
+    expect(tables).toContain("tournament_tombstones");
+  });
+});
+
+describe("deleteCloudTournament", () => {
+  it("writes a tombstone and deletes by id", async () => {
+    const tables: string[] = [];
+    const eq = vi.fn(() => Promise.resolve({ data: null, error: null }));
+    const upsert = vi.fn(() => Promise.resolve({ data: null, error: null }));
+    const chain = {
+      table: "",
+      delete: vi.fn(() => chain),
+      upsert,
+      eq,
+    };
+    const client = {
+      from: vi.fn((table: string) => {
+        tables.push(table);
+        chain.table = table;
+        return chain;
+      }),
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } }, error: null }),
+      },
+    } as unknown as import("./supabaseClient.ts").SchedulerSupabaseClient;
+
+    await expect(deleteCloudTournament(client, "t1")).resolves.toBeUndefined();
+    expect(tables).toEqual(["tournament_tombstones", "tournaments"]);
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(chain.delete).toHaveBeenCalledTimes(1);
+    expect(eq).toHaveBeenCalledWith("id", "t1");
   });
 });

@@ -33,11 +33,74 @@ create table if not exists public.tournament_editors (
   primary key (tournament_id, invited_email)
 );
 
+-- Durable delete markers so previously deleted tournament ids cannot be re-uploaded
+-- from stale local IndexedDB copies on another device.
+create table if not exists public.tournament_tombstones (
+  tournament_id text primary key,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  deleted_at timestamptz not null default now()
+);
+
 -- Step 2: enable RLS
 
 alter table public.profiles enable row level security;
 alter table public.tournaments enable row level security;
 alter table public.tournament_editors enable row level security;
+alter table public.tournament_tombstones enable row level security;
+
+-- Helper predicates run as the function owner so policy checks do not recurse through RLS.
+create or replace function public.is_tournament_owner(check_tournament_id text, check_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.tournaments t
+    where t.id = check_tournament_id
+      and t.owner_id = check_user_id
+  );
+$$;
+
+create or replace function public.is_tournament_editor(check_tournament_id text, check_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.tournament_editors te
+    where te.tournament_id = check_tournament_id
+      and te.editor_user_id = check_user_id
+  );
+$$;
+
+create or replace function public.can_tournament_editor_update(
+  check_tournament_id text,
+  check_user_id uuid,
+  next_owner_id uuid,
+  next_status text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.tournament_editors te
+    join public.tournaments t on t.id = te.tournament_id
+    where te.tournament_id = check_tournament_id
+      and te.editor_user_id = check_user_id
+      and t.owner_id = next_owner_id
+      and t.status = next_status
+  );
+$$;
 
 -- Step 3: policies (all tables exist now, cross-references are safe)
 
@@ -51,11 +114,7 @@ create policy "tournament owners and editors can read"
   to authenticated
   using (
     owner_id = auth.uid()
-    or exists (
-      select 1 from public.tournament_editors te
-      where te.tournament_id = id
-        and te.editor_user_id = auth.uid()
-    )
+    or public.is_tournament_editor(id, auth.uid())
   );
 
 create policy "tournament owners can insert"
@@ -73,17 +132,9 @@ create policy "tournament owners can update"
 create policy "tournament editors can update data"
   on public.tournaments for update
   to authenticated
-  using (
-    exists (
-      select 1 from public.tournament_editors te
-      where te.tournament_id = id
-        and te.editor_user_id = auth.uid()
-    )
-  )
+  using (public.is_tournament_editor(id, auth.uid()))
   with check (
-    -- co-editors may not change owner_id or status
-    owner_id = (select owner_id from public.tournaments t2 where t2.id = id)
-    and status  = (select status  from public.tournaments t2 where t2.id = id)
+    public.can_tournament_editor_update(id, auth.uid(), owner_id, status)
   );
 
 create policy "tournament owners can delete"
@@ -94,38 +145,27 @@ create policy "tournament owners can delete"
 create policy "tournament owners can manage editors"
   on public.tournament_editors for all
   to authenticated
-  using (
-    exists (
-      select 1 from public.tournaments t
-      where t.id = tournament_id
-        and t.owner_id = auth.uid()
-    )
-  )
-  with check (
-    exists (
-      select 1 from public.tournaments t
-      where t.id = tournament_id
-        and t.owner_id = auth.uid()
-    )
-  );
+  using (public.is_tournament_owner(tournament_id, auth.uid()))
+  with check (public.is_tournament_owner(tournament_id, auth.uid()));
+
+create policy "users can read own tournament tombstones"
+  on public.tournament_tombstones for select
+  to authenticated
+  using (owner_id = auth.uid());
+
+create policy "users can write own tournament tombstones"
+  on public.tournament_tombstones for all
+  to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
 
 -- Co-editors can read the editor list for tournaments they have access to.
 create policy "tournament editors can read editors"
   on public.tournament_editors for select
   to authenticated
   using (
-    exists (
-      select 1 from public.tournaments t
-      where t.id = tournament_id
-        and (
-          t.owner_id = auth.uid()
-          or exists (
-            select 1 from public.tournament_editors te2
-            where te2.tournament_id = t.id
-              and te2.editor_user_id = auth.uid()
-          )
-        )
-    )
+    public.is_tournament_owner(tournament_id, auth.uid())
+    or public.is_tournament_editor(tournament_id, auth.uid())
   );
 
 -- Step 4: trigger (after tournament_editors exists)

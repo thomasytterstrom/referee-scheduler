@@ -134,6 +134,19 @@ export async function deleteCloudTournament(
   client: SchedulerSupabaseClient,
   id: string,
 ): Promise<void> {
+  const userId = (await client.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("Not signed in");
+
+  const { error: tombstoneError } = await client.from("tournament_tombstones").upsert(
+    {
+      tournament_id: id,
+      owner_id: userId,
+      deleted_at: new Date().toISOString(),
+    },
+    { onConflict: "tournament_id" },
+  );
+  throwIfError(tombstoneError);
+
   const { error } = await client.from("tournaments").delete().eq("id", id);
   throwIfError(error);
 }
@@ -205,7 +218,18 @@ export async function migrateLocalTournamentsToCloud(
     .in("id", ids);
   const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id));
 
-  const toUpload = localTournaments.filter((t) => !existingIds.has(t.id));
+  const { data: deleted } = await client
+    .from("tournament_tombstones")
+    .select("tournament_id")
+    .eq("owner_id", ownerId)
+    .in("tournament_id", ids);
+  const deletedIds = new Set(
+    (deleted ?? []).map((r: { tournament_id: string }) => r.tournament_id),
+  );
+
+  const toUpload = localTournaments.filter(
+    (t) => !existingIds.has(t.id) && !deletedIds.has(t.id),
+  );
   if (toUpload.length === 0) return [];
 
   const now = new Date().toISOString();
