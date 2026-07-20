@@ -227,5 +227,25 @@
       "synced": "synced",
       "error": "sync error"
     }
+  },
+  "tournamentCloud": {
+    "loading": "Loading…",
+    "shared": "shared",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "conflict": "This tournament was modified elsewhere — your unsaved changes may overwrite theirs.",
+    "conflictReload": "Reload latest",
+    "filter": {
+      "active": "Active",
+      "archived": "Archived",
+      "emptyArchived": "No archived tournaments."
+    },
+    "share": {
+      "title": "Share tournament",
+      "emailPlaceholder": "Invite by email address",
+      "invite": "Invite",
+      "pending": "invite pending",
+      "noEditors": "No co-editors yet."
+    }
   }
 }

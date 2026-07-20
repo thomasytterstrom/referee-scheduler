@@ -11,11 +11,14 @@ import type { DBSchema, IDBPDatabase } from "idb";
 import type { Referee, Tournament } from "../model/tournament.ts";
 import type { DirectoryRecord } from "./directorySync.ts";
 
+export type TournamentStatus = "active" | "archived";
+
 // Envelope fields duplicated out of the record for cheap listing.
 export interface TournamentMeta {
   id: string;
   name: string;
   updatedAt: string; // ISO-8601
+  status: TournamentStatus;
 }
 
 // One IndexedDB record: the meta fields (in-line key on `id`) + the full tournament graph.
@@ -57,8 +60,13 @@ export async function saveTournament(rec: {
   id: string;
   name: string;
   tournament: Tournament;
+  status?: TournamentStatus;
 }): Promise<void> {
-  const record: StoredTournament = { ...rec, updatedAt: new Date().toISOString() };
+  const record: StoredTournament = {
+    ...rec,
+    status: rec.status ?? "active",
+    updatedAt: new Date().toISOString(),
+  };
   await (await db()).put("tournaments", record);
 }
 
@@ -68,7 +76,7 @@ export async function loadTournament(id: string): Promise<StoredTournament | und
 
 export async function listTournaments(): Promise<TournamentMeta[]> {
   const all = await (await db()).getAll("tournaments");
-  return all.map(({ id, name, updatedAt }) => ({ id, name, updatedAt }));
+  return all.map(({ id, name, updatedAt, status }) => ({ id, name, updatedAt, status: status ?? "active" }));
 }
 
 export async function deleteTournament(id: string): Promise<void> {

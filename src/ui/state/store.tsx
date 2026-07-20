@@ -3,8 +3,11 @@
 // tournament so React re-renders, then a debounced autosave (persistence.createAutosave) writes the
 // whole record back under its id — which re-stamps updatedAt on each save. dayIndex/step/selection are
 // UI-transient and never persisted (they are not part of the Tournament graph).
+//
+// When signed in, saves also go to Supabase (cloud as source of truth, issue #9). If an optimistic-
+// concurrency conflict is detected the `conflict` flag is set; the UI should prompt the user to reload.
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Assignment, Court, Day, Match, Referee, Tournament } from "../../model/tournament.ts";
 import { newCourtId } from "../../model/tournament.ts";
@@ -20,6 +23,9 @@ export interface Store {
   name: string;
   tournament: Tournament;
   dayIndex: number;
+  /** True when a concurrent cloud save was detected — prompt user to reload. */
+  conflict: boolean;
+  clearConflict(): void;
 
   setName(name: string): void;
   setDayIndex(i: number): void;
@@ -89,25 +95,54 @@ export interface StoreInit {
   id: string;
   name: string;
   tournament: Tournament;
+  /** Present when this tournament was loaded from cloud storage. */
+  ownerId?: string;
+  cloudUpdatedAt?: string;
+  /** Cloud save function; when present the store calls it on each autosave. */
+  onCloudSave?: (rec: {
+    id: string;
+    name: string;
+    tournament: Tournament;
+    lastKnownUpdatedAt: string | null;
+  }) => Promise<{ ok: boolean; reason?: string; updatedAt?: string }>;
 }
 
 export function StoreProvider({ initial, children }: { initial: StoreInit; children: ReactNode }) {
   const [name, setName] = useState(initial.name);
-  // Own a private copy and normalize availability up front, so a reloaded/backup tournament shows its
-  // full roster in the grid without waiting for a first edit.
   const [tournament, setTournament] = useState<Tournament>(() => {
     const t = structuredClone(initial.tournament);
     ensureAvailability(t);
     return t;
   });
   const [dayIndex, setDayIndex] = useState(0);
+  const [conflict, setConflict] = useState(false);
+
+  // Track the most recent updated_at seen from the cloud so the next save can do an optimistic check.
+  const lastCloudUpdatedAt = useRef<string | null>(initial.cloudUpdatedAt ?? null);
 
   const autosave = useRef(createAutosave()).current;
+
+  const handleCloudSave = useCallback(
+    async (rec: { id: string; name: string; tournament: Tournament }) => {
+      if (!initial.onCloudSave) return;
+      const result = await initial.onCloudSave({
+        ...rec,
+        lastKnownUpdatedAt: lastCloudUpdatedAt.current,
+      });
+      if (result.ok && result.updatedAt) {
+        lastCloudUpdatedAt.current = result.updatedAt;
+      } else if (!result.ok && result.reason === "conflict") {
+        setConflict(true);
+      }
+    },
+    [initial],
+  );
+
   useEffect(() => {
     autosave({ id: initial.id, name, tournament });
-  }, [autosave, initial.id, name, tournament]);
+    if (initial.onCloudSave) void handleCloudSave({ id: initial.id, name, tournament });
+  }, [autosave, initial.id, name, tournament, handleCloudSave, initial.onCloudSave]);
 
-  // Clone the tournament, apply the mutation, publish the new reference.
   const mutate = (fn: (t: Tournament) => void) =>
     setTournament((prev) => {
       const next = structuredClone(prev);
@@ -120,6 +155,8 @@ export function StoreProvider({ initial, children }: { initial: StoreInit; child
     name,
     tournament,
     dayIndex,
+    conflict,
+    clearConflict: () => setConflict(false),
 
     setName,
     setDayIndex,
