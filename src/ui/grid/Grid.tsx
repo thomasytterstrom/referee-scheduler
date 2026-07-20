@@ -12,7 +12,7 @@ import type {
   Tournament,
 } from "../../model/tournament.ts";
 import { t } from "../../i18n/t.ts";
-import { refColor } from "./refColor.ts";
+import { makeRefColorMap } from "./refColor.ts";
 import styles from "./Grid.module.css";
 
 export type SlotKind = "head" | "assistant";
@@ -42,6 +42,7 @@ export function Grid({
   const refName = new Map<string, string>(
     tournament.referees.map((r) => [r.id, r.name] as const),
   );
+  const colorMap = makeRefColorMap(tournament.referees.map((r) => r.id));
   // The day's available referees (absent from availability = not available this day).
   const availableRefs = tournament.referees.filter((r) => r.id in day.availability);
   const courts = day.availableCourtIds
@@ -82,10 +83,11 @@ export function Grid({
                         match={match}
                         assignment={day.assignments.find((a) => a.matchId === match.id)}
                         refName={refName}
-                        availableRefs={availableRefs}
-                        disabled={disabled}
-                        onPin={onPin}
-                        onOverride={onOverride}
+                       colorMap={colorMap}
+                       availableRefs={availableRefs}
+                       disabled={disabled}
+                       onPin={onPin}
+                       onOverride={onOverride}
                       />
                     ) : (
                       <span className={styles.idle} title={t("grid.empty")}>
@@ -107,6 +109,7 @@ interface MatchCellProps {
   match: Match;
   assignment: Assignment | undefined;
   refName: Map<string, string>;
+  colorMap: Map<string, string>;
   availableRefs: Referee[];
   disabled: boolean;
   onPin: GridProps["onPin"];
@@ -117,6 +120,7 @@ function MatchCell({
   match,
   assignment,
   refName,
+  colorMap,
   availableRefs,
   disabled,
   onPin,
@@ -149,6 +153,7 @@ function MatchCell({
         matchId={match.id}
         slot={head}
         refName={refName}
+        colorMap={colorMap}
         availableRefs={availableRefs}
         disabled={disabled}
         onPin={onPin}
@@ -160,6 +165,7 @@ function MatchCell({
           matchId={match.id}
           slot={assistant}
           refName={refName}
+          colorMap={colorMap}
           availableRefs={availableRefs}
           disabled={disabled}
           onPin={onPin}
@@ -175,6 +181,7 @@ interface SlotControlProps {
   matchId: string;
   slot: Slot;
   refName: Map<string, string>;
+  colorMap: Map<string, string>;
   availableRefs: Referee[];
   disabled: boolean;
   onPin: GridProps["onPin"];
@@ -186,12 +193,13 @@ function SlotControl({
   matchId,
   slot,
   refName,
+  colorMap,
   availableRefs,
   disabled,
   onPin,
   onOverride,
 }: SlotControlProps) {
-  const color = slot.refId ? refColor(slot.refId) : undefined;
+  const color = slot.refId ? colorMap.get(slot.refId) : undefined;
   const name = slot.refId ? refName.get(slot.refId) ?? slot.refId : t("grid.noReferee");
 
   return (

@@ -5,7 +5,7 @@ import { useStore } from "../state/store.tsx";
 import { useDirectory } from "../state/directory.tsx";
 import { sortByName } from "../../model/directory.ts";
 import { t } from "../../i18n/t.ts";
-import { refColor } from "../grid/refColor.ts";
+import { makeRefColorMap } from "../grid/refColor.ts";
 import { Button } from "@/ui/shadcn/ui/button";
 import { Input } from "@/ui/shadcn/ui/input";
 import { Checkbox } from "@/ui/shadcn/ui/checkbox";
@@ -17,6 +17,8 @@ export function SetupStep() {
   const [refName, setRefName] = useState("");
   const [courtName, setCourtName] = useState("");
   const day = store.tournament.days[store.dayIndex];
+
+  const colorMap = makeRefColorMap(store.tournament.referees.map((r) => r.id));
 
   // Suggest directory referees not already in this roster (add-existing); a new name creates one.
   const rosterIds = new Set(store.tournament.referees.map((r) => r.id));
@@ -46,7 +48,7 @@ export function SetupStep() {
           <ul className="mb-2 flex list-none flex-col gap-1.5">
             {store.tournament.referees.map((r) => (
               <li key={r.id} className="flex items-center gap-1.5">
-                <span className="size-3 flex-none rounded-[3px]" style={{ background: refColor(r.id) }} aria-hidden />
+                <span className="size-3 flex-none rounded-[3px]" style={{ background: colorMap.get(r.id) }} aria-hidden />
                 <Input
                   className="flex-1"
                   value={r.name}

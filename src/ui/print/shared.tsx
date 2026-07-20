@@ -10,7 +10,7 @@ import type {
   Gender,
 } from "../../model/tournament.ts";
 import { t } from "../../i18n/t.ts";
-import { refColor } from "../grid/refColor.ts";
+import { makeRefColorMap } from "../grid/refColor.ts";
 import "./print.css";
 
 // Common props for every artifact. Tournament carries no display name, so it comes in as a prop
@@ -22,9 +22,8 @@ export interface PrintProps {
   tournamentName?: string;
 }
 
-// Referee color comes from the shared grid helper so a ref's dot matches on screen and in print
-// (stable id -> one color). Re-exported for discoverability.
-export { refColor };
+// Re-export makeRefColorMap so print artifacts can build the roster color map.
+export { makeRefColorMap };
 
 export function byId<T extends { id: string }>(items: T[]): Map<string, T> {
   return new Map(items.map((x) => [x.id, x]));
@@ -48,16 +47,16 @@ export function slotRef(refs: Map<string, Referee>, refId: string | null): Refer
   return refs.get(refId) ?? { id: refId, name: refId };
 }
 
-export function Dot({ id }: { id: string }): ReactNode {
-  return <span className="print-dot" style={{ background: refColor(id) }} />;
+export function Dot({ id, colorMap }: { id: string; colorMap: Map<string, string> }): ReactNode {
+  return <span className="print-dot" style={{ background: colorMap.get(id) ?? `hsl(0,0%,50%)` }} />;
 }
 
 // Referee identity: color dot + full name (name alone carries identity on a B/W laser). undefined -> em-dash.
-export function RefLabel({ ref }: { ref: Referee | undefined }): ReactNode {
+export function RefLabel({ ref, colorMap }: { ref: Referee | undefined; colorMap: Map<string, string> }): ReactNode {
   if (!ref) return <span className="print-none">—</span>;
   return (
     <span className="print-ref">
-      <Dot id={ref.id} />
+      <Dot id={ref.id} colorMap={colorMap} />
       {ref.name}
     </span>
   );

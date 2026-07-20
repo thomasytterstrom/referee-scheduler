@@ -5,6 +5,7 @@
 // the schedule.
 
 import type { Tournament } from "../../model/tournament.ts";
+import { makeRefColorMap } from "../grid/refColor.ts";
 import { cumulativeRows } from "./cumulative.ts";
 import { t } from "../../i18n/t.ts";
 import styles from "./RefereeView.module.css";
@@ -15,14 +16,6 @@ export interface RefereeViewProps {
 }
 
 type Duty = "head" | "assistant" | "sit" | "unavailable";
-
-// Stable id -> HSL. Defined locally (../grid/refColor.ts absent) to keep the component
-// self-contained; hue is a rolling hash of the id so it survives renames.
-function refColor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return `hsl(${h % 360}, 62%, 52%)`;
-}
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
 
@@ -41,6 +34,7 @@ export function RefereeView({ tournament, dayIndex }: RefereeViewProps) {
   const day = tournament.days[dayIndex];
   const rounds = [...day.rounds].sort((a, b) => a.index - b.index);
   const roundSet = new Set(rounds.map((r) => r.index));
+  const colorMap = makeRefColorMap(tournament.referees.map((r) => r.id));
 
   // match id -> round index (every match this day).
   const matchRound = new Map<string, number>();
@@ -96,7 +90,7 @@ export function RefereeView({ tournament, dayIndex }: RefereeViewProps) {
     return {
       id: ref.id,
       name: ref.name,
-      color: refColor(ref.id),
+      color: colorMap.get(ref.id) ?? `hsl(0, 0%, 50%)`,
       cells,
       head,
       asst,
@@ -197,6 +191,7 @@ export function CumulativeFairness({ tournament, dayIndex }: RefereeViewProps) {
   const rows = cumulativeRows(tournament, dayIndex);
   const maxHead = Math.max(1, ...rows.map((r) => Math.max(r.head, r.targetHead)));
   const maxAsst = Math.max(1, ...rows.map((r) => Math.max(r.asst, r.targetAsst)));
+  const colorMap = makeRefColorMap(tournament.referees.map((r) => r.id));
 
   return (
     <div className={styles.root}>
@@ -212,7 +207,7 @@ export function CumulativeFairness({ tournament, dayIndex }: RefereeViewProps) {
         <div className={styles.empty}>{t("refereeView.empty")}</div>
       ) : (
         rows.map((r) => {
-          const color = refColor(r.id);
+          const color = colorMap.get(r.id) ?? `hsl(0, 0%, 50%)`;
           return (
             <div key={r.id} className={styles.row}>
               <div className={styles.name}>

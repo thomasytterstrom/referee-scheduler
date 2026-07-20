@@ -1,12 +1,10 @@
-// Per-referee duty slips — portrait, 2-up, one slip per referee. Each slip is that ref's personal
-// "your duties today": header (name + count) then chronological Time · Court · Role · Class rows.
-// break-inside: avoid (in print.css) keeps a slip whole across the page fold. Cut and hand out.
 import type { Gender } from "../../model/tournament.ts";
 import { t } from "../../i18n/t.ts";
 import {
   DocHeader,
   GenderTag,
   Dot,
+  makeRefColorMap,
   byId,
   assignmentsByMatch,
   sortedRounds,
@@ -28,6 +26,7 @@ export function DutySlips({ tournament, dayIndex, generatedAt, tournamentName }:
   const rounds = sortedRounds(day);
   const assignments = assignmentsByMatch(day);
   const name = tournamentName ?? t("common.appName");
+  const colorMap = makeRefColorMap(tournament.referees.map((r) => r.id));
 
   // refId -> chronological duties (rounds already ordered).
   const dutiesByRef = new Map<string, Duty[]>();
@@ -60,7 +59,7 @@ export function DutySlips({ tournament, dayIndex, generatedAt, tournamentName }:
           return (
             <article className="slip" key={ref.id}>
               <div className="slip-hdr">
-                <Dot id={ref.id} />
+                <Dot id={ref.id} colorMap={colorMap} />
                 <span className="slip-name">{ref.name}</span>
                 <span className="slip-count">{t("print.slip.dutyCount", { count: duties.length })}</span>
               </div>
