@@ -8,7 +8,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Assignment, Court, Day, Match, Referee, Tournament } from "../../model/tournament.ts";
 import { newCourtId } from "../../model/tournament.ts";
-import type { ImportInput, MergeResult } from "../../import/fixtures.ts";
+import type { ImportSource, MergeResult } from "../../import/fixtures.ts";
 import { mergeImport } from "../../import/fixtures.ts";
 import type { SlotKind } from "../grid/Grid.tsx";
 import type { Sol } from "../../domain/types.ts";
@@ -40,7 +40,7 @@ export interface Store {
 
   // Fast-fill import overlay: merges a fixture file/paste onto the current tournament (preserving
   // referees, assignments and pins) and returns the merge report for the UI to surface.
-  importMatches(input: ImportInput): MergeResult;
+  importMatches(inputs: ImportSource[]): MergeResult;
   // Replace the whole tournament (e.g. a loaded JSON backup); roster availability is re-normalized.
   replaceTournament(t: Tournament): void;
 
@@ -191,8 +191,8 @@ export function StoreProvider({ initial, children }: { initial: StoreInit; child
       });
     },
 
-    importMatches(input) {
-      const result = mergeImport(tournament, input);
+    importMatches(inputs) {
+      const result = mergeImport(tournament, inputs);
       ensureAvailability(result.tournament);
       setTournament(result.tournament);
       return result;

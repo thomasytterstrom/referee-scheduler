@@ -1,20 +1,28 @@
-// Click-or-drop file target. Hands the first dropped/selected File to onFile; the caller decides how
-// to read it (ArrayBuffer for .xlsx, text otherwise).
+// Click-or-drop file target. Hands dropped/selected files to the caller; caller decides how to read
+// each one (ArrayBuffer for .xlsx, text otherwise).
 
 import { useRef, useState } from "react";
 
 export function FileDrop({
   accept,
   label,
-  onFile,
+  multiple = false,
+  onFiles,
 }: {
   accept: string;
   label: string;
-  onFile: (file: File) => void;
+  multiple?: boolean;
+  onFiles: (files: File[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const pick = () => inputRef.current?.click();
+  const emit = (list: FileList | null) => {
+    if (!list) return;
+    const files = Array.from(list);
+    if (files.length === 0) return;
+    onFiles(multiple ? files : [files[0]]);
+  };
 
   return (
     <div
@@ -40,18 +48,17 @@ export function FileDrop({
       onDrop={(e) => {
         e.preventDefault();
         setOver(false);
-        const f = e.dataTransfer.files[0];
-        if (f) onFile(f);
+        emit(e.dataTransfer.files);
       }}
     >
       <input
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         hidden
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onFile(f);
+          emit(e.target.files);
           e.target.value = "";
         }}
       />

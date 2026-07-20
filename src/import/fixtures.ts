@@ -1,5 +1,6 @@
-// Import detector: .xlsx (ArrayBuffer via SheetJS), pasted tab/comma text, or .csv/.tsv -> a
-// Tournament (Courts/Days/Rounds/Matches; NEVER referees) + merge-on-re-import. persistence-spec.md §1.
+// Fixtures import: .xlsx (ArrayBuffer via SheetJS), pasted tab/comma text, or .csv/.tsv.
+// Supports single-source paste and multi-file union import; reconciliation is still one authoritative
+// merge-on-re-import (persistence-spec.md §1.4).
 //
 // The domain Match has no field for the federation Kamp Id, yet §1.4 keys the re-import merge on it
 // and it must survive persistence. So imported matches encode their key in the stable Match.id:
@@ -13,6 +14,16 @@ import { normHeader, mapColumns } from "./columns.ts";
 
 export type ImportInput = string | ArrayBuffer | Uint8Array;
 
+export interface ImportSource {
+  name: string;
+  input: ImportInput;
+}
+
+export interface ImportFileCount {
+  fileName: string;
+  matchCount: number;
+}
+
 export interface ImportResult {
   tournament: Tournament;
   errors: string[]; // per-row problems (§1.7); a bad row never aborts the import
@@ -20,6 +31,7 @@ export interface ImportResult {
 }
 
 export interface MergeResult extends ImportResult {
+  fileCounts: ImportFileCount[]; // parsed match-count per source file/input
   added: string[]; // new match ids
   moved: string[]; // matched match ids whose day/round/court moved
   removed: string[]; // existing imported match ids absent from the new file
@@ -76,10 +88,16 @@ interface Row {
   matchnamn?: string;
 }
 
-function parseRows(input: ImportInput): { rows: Row[]; errors: string[]; warnings: string[] } {
+function parseRows(input: ImportInput, sourceName?: string): { rows: Row[]; errors: string[]; warnings: string[] } {
+  const prefix = sourceName ? sourceName + " — " : "";
   const matrix = toMatrix(input);
-  if (matrix.length === 0) throw new Error("Empty import: no header row");
-  const cols = mapColumns(matrix[0]);
+  if (matrix.length === 0) throw new Error(prefix + "Empty import: no header row");
+  let cols: ReturnType<typeof mapColumns>;
+  try {
+    cols = mapColumns(matrix[0]);
+  } catch (e) {
+    throw new Error(prefix + (e instanceof Error ? e.message : String(e)));
+  }
   const rows: Row[] = [];
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -97,15 +115,15 @@ function parseRows(input: ImportInput): { rows: Row[]; errors: string[]; warning
 
     const rowNo = i + 1;
     const dayKey = parseDayKey(cell(cols.datum));
-    if (!dayKey) { errors.push(`row ${rowNo}: unparseable Datum "${cell(cols.datum)}"`); continue; }
+    if (!dayKey) { errors.push(`${prefix}row ${rowNo}: unparseable Datum "${cell(cols.datum)}"`); continue; }
     const startTime = cell(cols.starttid);
-    if (!startTime) { errors.push(`row ${rowNo}: missing Starttid`); continue; }
+    if (!startTime) { errors.push(`${prefix}row ${rowNo}: missing Starttid`); continue; }
     const courtName = cell(cols.spelplats);
-    if (!courtName) { errors.push(`row ${rowNo}: missing Spelplats`); continue; }
+    if (!courtName) { errors.push(`${prefix}row ${rowNo}: missing Spelplats`); continue; }
     const klass = cell(cols.klass).toUpperCase();
     const gender: Gender | null = klass === "H" ? "M" : klass === "D" ? "W" : null;
-    if (!gender) { errors.push(`row ${rowNo}: unknown Klass "${cell(cols.klass)}"`); continue; }
-    if (!kampId) warnings.push(`row ${rowNo}: missing Kamp Id, keyed on (day, time, court)`);
+    if (!gender) { errors.push(`${prefix}row ${rowNo}: unknown Klass "${cell(cols.klass)}"`); continue; }
+    if (!kampId) warnings.push(`${prefix}row ${rowNo}: missing Kamp Id, keyed on (day, time, court)`);
 
     rows.push({
       dayKey, startTime, courtName, gender,
@@ -117,6 +135,68 @@ function parseRows(input: ImportInput): { rows: Row[]; errors: string[]; warning
     });
   }
   return { rows, errors, warnings };
+}
+
+function sameRow(a: Row, b: Row): boolean {
+  return (
+    a.dayKey === b.dayKey
+    && a.startTime === b.startTime
+    && a.courtName === b.courtName
+    && a.gender === b.gender
+    && a.kampId === b.kampId
+    && a.matchNo === b.matchNo
+    && a.homeTeam === b.homeTeam
+    && a.awayTeam === b.awayTeam
+    && a.matchnamn === b.matchnamn
+  );
+}
+
+function normalizeSources(input: ImportSource[] | ImportInput): ImportSource[] {
+  if (!Array.isArray(input)) return [{ name: "Import", input }];
+  if (input.length === 0) throw new Error("Empty import: no files provided");
+  return input.map((source, idx) => ({
+    name: source.name.trim() || `Import ${idx + 1}`,
+    input: source.input,
+  }));
+}
+
+function parseSourceUnion(sources: ImportSource[]): {
+  rows: Row[];
+  errors: string[];
+  warnings: string[];
+  fileCounts: ImportFileCount[];
+} {
+  const rows: Row[] = [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const fileCounts: ImportFileCount[] = [];
+  const seenByKampId = new Map<string, { row: Row; sourceName: string }>();
+
+  for (const source of sources) {
+    const parsed = parseRows(source.input, source.name);
+    fileCounts.push({ fileName: source.name, matchCount: parsed.rows.length });
+    errors.push(...parsed.errors);
+    warnings.push(...parsed.warnings);
+
+    for (const row of parsed.rows) {
+      if (!row.kampId) {
+        rows.push(row);
+        continue;
+      }
+      const prev = seenByKampId.get(row.kampId);
+      if (!prev) {
+        seenByKampId.set(row.kampId, { row, sourceName: source.name });
+        rows.push(row);
+        continue;
+      }
+      if (!sameRow(prev.row, row))
+        warnings.push(
+          `Kamp Id ${row.kampId} has conflicting rows in ${prev.sourceName} and ${source.name}; keeping first row from ${prev.sourceName}`,
+        );
+    }
+  }
+
+  return { rows, errors, warnings, fileCounts };
 }
 
 // --- rows -> Tournament -----------------------------------------------------
@@ -202,8 +282,8 @@ function ensureIncDay(inc: Tournament, di: number, exDay: Day, finalCourtIds: Se
   return inc.days[di];
 }
 
-export function mergeImport(existing: Tournament, input: ImportInput): MergeResult {
-  const { rows, errors, warnings } = parseRows(input);
+export function mergeImport(existing: Tournament, input: ImportInput | ImportSource[]): MergeResult {
+  const { rows, errors, warnings, fileCounts } = parseSourceUnion(normalizeSources(input));
   const inc = buildTournament(rows); // fresh skeleton; deterministic fed ids match existing ones
 
   // 1. Reuse existing court ids by name; keep courts absent from this import.
@@ -288,5 +368,5 @@ export function mergeImport(existing: Tournament, input: ImportInput): MergeResu
 
   inc.courts = finalCourts;
   inc.referees = existing.referees; // import never mints referees; roster is preserved
-  return { tournament: inc, errors, warnings, added, moved, removed };
+  return { tournament: inc, errors, warnings, fileCounts, added, moved, removed };
 }

@@ -157,3 +157,73 @@ describe("mergeImport — re-import reconciliation (§1.4)", () => {
     expect(asg?.head.refId).toBe("ref-y");
   });
 });
+
+describe("mergeImport — multi-file union import", () => {
+  const sampleLines = SAMPLE.split(/\r\n|\r|\n/).filter((l) => l.trim() !== "");
+  const sampleHeader = sampleLines[0];
+  const sampleBody = sampleLines.slice(1);
+  const classCol = sampleHeader.split("\t").indexOf("Klass");
+
+  function byClass(klass: "H" | "D"): string {
+    return [
+      sampleHeader,
+      ...sampleBody.filter((line) => line.split("\t")[classCol] === klass),
+    ].join("\n");
+  }
+
+  test("combines disjoint men's + women's files into one tournament with per-file counts", () => {
+    const men = byClass("H");
+    const women = byClass("D");
+    const empty = parseImport(sampleHeader).tournament;
+
+    const merged = mergeImport(empty, [
+      { name: "mens.tsv", input: men },
+      { name: "womens.tsv", input: women },
+    ]);
+
+    expect(allMatches(merged.tournament)).toHaveLength(38);
+    expect(merged.fileCounts).toEqual([
+      { fileName: "mens.tsv", matchCount: 19 },
+      { fileName: "womens.tsv", matchCount: 19 },
+    ]);
+    expect(merged.errors).toEqual([]);
+  });
+
+  test("dedupes duplicate Kamp Id across files (keep-first) and warns on conflict", () => {
+    const header = "Datum\tStarttid\tSpelplats\tKlass\tKamp Id";
+    const first = [header, "Sat 2026-07-18\t09:00\tPlan CC\tH\t1"].join("\n");
+    const second = [header, "Sat 2026-07-18\t10:00\tPlan CC\tH\t1"].join("\n");
+    const empty = parseImport(header).tournament;
+
+    const merged = mergeImport(empty, [
+      { name: "first.tsv", input: first },
+      { name: "second.tsv", input: second },
+    ]);
+
+    const ids = merged.tournament.days.flatMap((d) => d.rounds.flatMap((r) => r.matches.map((m) => m.id)));
+    expect(ids).toEqual(["match-fed-1"]);
+    expect(merged.tournament.days[0].rounds[0].startTime).toBe("09:00");
+    expect(merged.warnings.some((w) => /Kamp Id 1 has conflicting rows/.test(w))).toBe(true);
+    expect(merged.fileCounts).toEqual([
+      { fileName: "first.tsv", matchCount: 1 },
+      { fileName: "second.tsv", matchCount: 1 },
+    ]);
+  });
+
+  test("collapses shared court and round when different files share slot coordinates", () => {
+    const header = "Datum\tStarttid\tSpelplats\tKlass\tKamp Id";
+    const men = [header, "Sat 2026-07-18\t09:00\tPlan CC\tH\t10"].join("\n");
+    const women = [header, "Sat 2026-07-18\t09:00\tPlan CC\tD\t20"].join("\n");
+    const empty = parseImport(header).tournament;
+
+    const merged = mergeImport(empty, [
+      { name: "men.tsv", input: men },
+      { name: "women.tsv", input: women },
+    ]);
+
+    expect(merged.tournament.courts.map((c) => c.name)).toEqual(["Plan CC"]);
+    expect(merged.tournament.days).toHaveLength(1);
+    expect(merged.tournament.days[0].rounds).toHaveLength(1);
+    expect(merged.tournament.days[0].rounds[0].matches).toHaveLength(2);
+  });
+});
