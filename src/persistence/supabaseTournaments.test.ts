@@ -232,7 +232,7 @@ describe("migrateLocalTournamentsToCloud", () => {
 
     expect(uploaded).toEqual(["t1"]);
     expect(chain.insert).toHaveBeenCalledTimes(1);
-    const rows = chain.insert.mock.calls[0]?.[0] as Array<{ id: string }>;
+    const rows = (chain.insert.mock.lastCall?.at(0) ?? []) as Array<{ id: string }>;
     expect(rows.map((r) => r.id)).toEqual(["t1"]);
     expect(tables).toContain("tournament_tombstones");
   });
