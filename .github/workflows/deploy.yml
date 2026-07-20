@@ -28,6 +28,10 @@ jobs:
       # Gate: a red test or type error blocks the publish (build runs tsc -b first).
       - run: npm run test
       - run: npm run build
+       env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_DB: ${{ secrets.SUPABASE_DB}}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
