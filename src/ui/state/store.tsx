@@ -119,29 +119,50 @@ export function StoreProvider({ initial, children }: { initial: StoreInit; child
 
   // Track the most recent updated_at seen from the cloud so the next save can do an optimistic check.
   const lastCloudUpdatedAt = useRef<string | null>(initial.cloudUpdatedAt ?? null);
+  const pendingCloudSave = useRef<{
+    id: string;
+    name: string;
+    tournament: Tournament;
+  } | null>(null);
+  const cloudSaveInFlight = useRef(false);
 
   const autosave = useRef(createAutosave()).current;
 
-  const handleCloudSave = useCallback(
-    async (rec: { id: string; name: string; tournament: Tournament }) => {
-      if (!initial.onCloudSave) return;
-      const result = await initial.onCloudSave({
-        ...rec,
-        lastKnownUpdatedAt: lastCloudUpdatedAt.current,
-      });
-      if (result.ok && result.updatedAt) {
-        lastCloudUpdatedAt.current = result.updatedAt;
-      } else if (!result.ok && result.reason === "conflict") {
-        setConflict(true);
+  const flushCloudSaves = useCallback(async () => {
+    if (!initial.onCloudSave || cloudSaveInFlight.current) return;
+    cloudSaveInFlight.current = true;
+    try {
+      while (pendingCloudSave.current) {
+        const rec = pendingCloudSave.current;
+        pendingCloudSave.current = null;
+        const result = await initial.onCloudSave({
+          ...rec,
+          lastKnownUpdatedAt: lastCloudUpdatedAt.current,
+        });
+        if (result.ok && result.updatedAt) {
+          lastCloudUpdatedAt.current = result.updatedAt;
+        } else if (!result.ok && result.reason === "conflict") {
+          setConflict(true);
+        }
       }
+    } finally {
+      cloudSaveInFlight.current = false;
+    }
+  }, [initial.onCloudSave]);
+
+  const queueCloudSave = useCallback(
+    (rec: { id: string; name: string; tournament: Tournament }) => {
+      if (!initial.onCloudSave) return;
+      pendingCloudSave.current = rec;
+      void flushCloudSaves();
     },
-    [initial],
+    [flushCloudSaves, initial.onCloudSave],
   );
 
   useEffect(() => {
     autosave({ id: initial.id, name, tournament });
-    if (initial.onCloudSave) void handleCloudSave({ id: initial.id, name, tournament });
-  }, [autosave, initial.id, name, tournament, handleCloudSave, initial.onCloudSave]);
+    if (initial.onCloudSave) queueCloudSave({ id: initial.id, name, tournament });
+  }, [autosave, initial.id, name, tournament, queueCloudSave, initial.onCloudSave]);
 
   const mutate = (fn: (t: Tournament) => void) =>
     setTournament((prev) => {
