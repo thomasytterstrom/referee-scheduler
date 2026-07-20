@@ -81,6 +81,26 @@ export function Wizard({ onExit }: WizardProps) {
           <DaySwitcher />
           <ThemeToggle />
         </header>
+
+        {store.conflict && (
+          <div className="flex items-center gap-3 border-b bg-destructive/10 px-5 py-2 text-sm text-destructive">
+            <span>{t("tournamentCloud.conflict")}</span>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => {
+                store.clearConflict();
+                window.location.reload();
+              }}
+            >
+              {t("tournamentCloud.conflictReload")}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={store.clearConflict}>
+              {t("common.cancel")}
+            </Button>
+          </div>
+        )}
+
         <section className="min-h-0 flex-1 overflow-auto p-5">
           {step === "setup" && <SetupStep />}
           {step === "import" && <ImportStep />}

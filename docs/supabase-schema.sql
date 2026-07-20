@@ -4,6 +4,154 @@
 -- All authenticated users share one global referee list (Swedish Volleyball Federation).
 -- Access control: sign in = full read/write access. No per-club scoping needed.
 
+-- ============================================================
+-- Issue #9: Cloud tournament storage
+-- Tables must all be created before any cross-referencing RLS policies.
+-- ============================================================
+
+-- Step 1: tables
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text unique not null
+);
+
+create table if not exists public.tournaments (
+  id text primary key,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  status text not null default 'active' check (status in ('active', 'archived')),
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+-- tournament_editors must exist before any policy that references it is created.
+create table if not exists public.tournament_editors (
+  tournament_id text not null references public.tournaments(id) on delete cascade,
+  invited_email text not null,
+  editor_user_id uuid references auth.users(id) on delete cascade,
+  primary key (tournament_id, invited_email)
+);
+
+-- Step 2: enable RLS
+
+alter table public.profiles enable row level security;
+alter table public.tournaments enable row level security;
+alter table public.tournament_editors enable row level security;
+
+-- Step 3: policies (all tables exist now, cross-references are safe)
+
+create policy "authenticated users can read profiles"
+  on public.profiles for select
+  to authenticated
+  using (true);
+
+create policy "tournament owners and editors can read"
+  on public.tournaments for select
+  to authenticated
+  using (
+    owner_id = auth.uid()
+    or exists (
+      select 1 from public.tournament_editors te
+      where te.tournament_id = id
+        and te.editor_user_id = auth.uid()
+    )
+  );
+
+create policy "tournament owners can insert"
+  on public.tournaments for insert
+  to authenticated
+  with check (owner_id = auth.uid());
+
+-- Owner can update anything; co-editor can only update data + updated_at.
+create policy "tournament owners can update"
+  on public.tournaments for update
+  to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+create policy "tournament editors can update data"
+  on public.tournaments for update
+  to authenticated
+  using (
+    exists (
+      select 1 from public.tournament_editors te
+      where te.tournament_id = id
+        and te.editor_user_id = auth.uid()
+    )
+  )
+  with check (
+    -- co-editors may not change owner_id or status
+    owner_id = (select owner_id from public.tournaments t2 where t2.id = id)
+    and status  = (select status  from public.tournaments t2 where t2.id = id)
+  );
+
+create policy "tournament owners can delete"
+  on public.tournaments for delete
+  to authenticated
+  using (owner_id = auth.uid());
+
+create policy "tournament owners can manage editors"
+  on public.tournament_editors for all
+  to authenticated
+  using (
+    exists (
+      select 1 from public.tournaments t
+      where t.id = tournament_id
+        and t.owner_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.tournaments t
+      where t.id = tournament_id
+        and t.owner_id = auth.uid()
+    )
+  );
+
+-- Co-editors can read the editor list for tournaments they have access to.
+create policy "tournament editors can read editors"
+  on public.tournament_editors for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.tournaments t
+      where t.id = tournament_id
+        and (
+          t.owner_id = auth.uid()
+          or exists (
+            select 1 from public.tournament_editors te2
+            where te2.tournament_id = t.id
+              and te2.editor_user_id = auth.uid()
+          )
+        )
+    )
+  );
+
+-- Step 4: trigger (after tournament_editors exists)
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.profiles (id, email)
+  values (new.id, new.email)
+  on conflict (id) do nothing;
+
+  update public.tournament_editors
+  set editor_user_id = new.id
+  where invited_email = new.email
+    and editor_user_id is null;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ============================================================
+
 create table if not exists public.referees (
   id text primary key,
   name text not null,
