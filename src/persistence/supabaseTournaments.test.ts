@@ -119,6 +119,39 @@ describe("saveCloudTournament", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("does not conflict when timestamps are the same instant with different formats", async () => {
+    const chain = {
+      select: () => chain,
+      single: () =>
+        Promise.resolve({ data: { updated_at: "2024-01-01T00:00:00.000+00:00" }, error: null }),
+      upsert: () => Promise.resolve({ data: null, error: null }),
+      eq: () => chain,
+      in: () => chain,
+      then: (resolve: (v: unknown) => unknown) =>
+        Promise.resolve({ data: null, error: null }).then(resolve),
+    };
+
+    const client = {
+      from: vi.fn(() => chain),
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } }, error: null }),
+      },
+    } as unknown as import("./supabaseClient.ts").SchedulerSupabaseClient;
+
+    const result = await saveCloudTournament(
+      client,
+      {
+        id: "t1",
+        name: "Test",
+        tournament: emptyTournament(),
+        lastKnownUpdatedAt: "2024-01-01T00:00:00.000Z",
+      },
+      "user-123",
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
   it("returns ok:false with reason:'error' when upsert fails", async () => {
     const chain = {
       select: () => chain,

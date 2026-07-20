@@ -35,6 +35,13 @@ function throwIfError(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
+function sameInstant(a: string, b: string): boolean {
+  const aMs = Date.parse(a);
+  const bMs = Date.parse(b);
+  if (Number.isNaN(aMs) || Number.isNaN(bMs)) return a === b;
+  return aMs === bMs;
+}
+
 export async function listCloudTournaments(
   client: SchedulerSupabaseClient,
 ): Promise<CloudTournamentMeta[]> {
@@ -93,7 +100,7 @@ export async function saveCloudTournament(
       .select("updated_at")
       .eq("id", rec.id)
       .single();
-    if (existing && existing.updated_at !== rec.lastKnownUpdatedAt) {
+    if (existing && !sameInstant(existing.updated_at, rec.lastKnownUpdatedAt)) {
       return {
         ok: false,
         reason: "conflict",
